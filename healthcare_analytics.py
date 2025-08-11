@@ -28,12 +28,18 @@ from collections import deque
 import dash
 from dash import dcc, html, Output, Input
 
-# Global queue to store consumed messages (maxlen limits memory)
-consumed_data = deque(maxlen=100)
+# ---------------------------- Globals ---------------------------- #
 
-# Kafka configs
+# Thread-safe deque for consumed Kafka messages, max 100 stored
+consumed_data = deque(maxlen=100)
+data_lock = threading.Lock()
+
+# Kafka config
 KAFKA_TOPIC = 'patient_checkins'
 KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']
+
+# Departments for message generation and display
+DEPARTMENTS = ["Cardiology", "Oncology", "Pediatrics"]
 
 # -------------------------------------- DATA ------------------------------------------- #
 
@@ -58,36 +64,76 @@ KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']
 # ---------------- Producer ---------------- #
 
 def kafka_producer():
-    producer = KafkaProducer(
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
-    )
-    departments = ["Cardiology", "Oncology", "Pediatrics"]
+    try:
+        # Instantiate a KafkaProducer that connects to the Kafka cluster
+        # The value_serializer converts the message dictionary into a JSON string,
+        # then encodes it into bytes because Kafka expects bytes to send
+        producer = KafkaProducer(
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+        
+        # Start an infinite loop that continuously produces messages
+        while True:
+            # Create a message dictionary with simulated patient data:
+            # 'patient_id' is a random number to simulate different patients
+            # 'check_in_time' captures the current time as a formatted string
+            # 'department' randomly selects one from a predefined list
+            message = {
+                "patient_id": random.randint(1000, 9999),
+                "check_in_time": time.strftime('%Y-%m-%d %H:%M:%S'),
+                "department": random.choice(DEPARTMENTS)
+            }
+            
+            # Send the serialized message asynchronously to the Kafka topic
+            # Kafka will handle buffering and network communication
+            producer.send(KAFKA_TOPIC, message)
+            
+            # Print the message to the console so you can monitor what's produced
+            print(f"Produced: {message}")
+            
+            # Pause for 2 seconds to avoid flooding Kafka with messages too quickly
+            time.sleep(2)
     
-    while True:
-        message = {
-            "patient_id": random.randint(1000, 9999),
-            "check_in_time": time.strftime('%Y-%m-%d %H:%M:%S'),
-            "department": random.choice(departments)
-        }
-        producer.send(KAFKA_TOPIC, message)
-        print(f"Produced: {message}")
-        time.sleep(2)  # produce every 2 seconds
+    except Exception as e:
+        # If any error happens (e.g., connection failure), print it for debugging
+        print(f"[Producer Error] {e}")
+
 
 # ---------------- Consumer ---------------- #
 
 def kafka_consumer():
-    consumer = KafkaConsumer(
-        KAFKA_TOPIC,
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        auto_offset_reset='latest',
-        group_id='dash_consumer_group',
-        value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-    )
-    for message in consumer:
-        data = message.value
-        print(f"Consumed: {data}")
-        consumed_data.append(data)
+    try:
+        # Create a KafkaConsumer instance connected to the Kafka cluster
+        # - Listens to the specified topic (KAFKA_TOPIC)
+        # - Connects to Kafka brokers listed in KAFKA_BOOTSTRAP_SERVERS
+        # - Starts reading from the earliest message if no offset is committed yet
+        # - Joins the consumer group named 'dash_consumer_group' to allow coordinated consumption
+        # - Deserializes incoming messages by decoding bytes to string, then parsing JSON
+        consumer = KafkaConsumer(
+            KAFKA_TOPIC,
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            auto_offset_reset='earliest',
+            group_id='dash_consumer_group',
+            value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+        )
+        
+        # Continuously iterate over messages received from Kafka
+        for message in consumer:
+            # Extract the actual data payload from the Kafka message object
+            data = message.value
+            
+            # Print consumed message to the console for monitoring/debugging
+            print(f"Consumed: {data}")
+            
+            # Safely append the consumed data to a shared global queue
+            # The data_lock ensures thread-safe access to consumed_data
+            with data_lock:
+                consumed_data.append(data)
+    except Exception as e:
+        # Catch and print any exceptions/errors during consumption to avoid silent failure
+        print(f"[Consumer Error] {e}")
+
 
 # ------------------ Data Table for Dash ------------------ #
 
@@ -126,71 +172,87 @@ app.layout = html.Div(children=[
         ])
     ]),
     
-    html.Div(className='data-section', children=[
-        html.Div(className='data-row', children=[
-            html.Div(className='data-title', children=[
-                html.H1('Healthcare Analytics Data Table', className='table-title')
-            ]),
-            html.Div(className='data-table', children=[
-                dcc.Graph(
-                    # figure=df_table
-                    )
-            ])
-        ]),
-    ]),
+    # html.Div(className='data-section', children=[
+    #     html.Div(className='data-row', children=[
+    #         html.Div(className='data-title', children=[
+    #             html.H1('Healthcare Analytics Data Table', className='table-title')
+    #         ]),
+    #         html.Div(className='data-table', children=[
+    #             dcc.Graph(
+    #                 figure=df_table
+    #                 )
+    #         ])
+    #     ]),
+    # ]),
     
-    html.Div([
-        html.H1("Live Patient Check-ins by Department"),
-            dcc.Graph(id='live-bar-chart'),
-            dcc.Interval(
-                id='interval-component',
-                interval=3*1000,  # 3000 milliseconds = 3 seconds
-                n_intervals=0
-            )
-    ]),
+    html.Div(
+        className="data-row",
+        children=[
+            html.H1("Live Patient Check-ins by Department", className= "table-title"),
+                dcc.Graph(
+                    className="gpt-graph",
+                    id='live-bar-chart'),
+                    dcc.Interval(
+                        id='interval-component',
+                        interval=3*1000,  # 3000 milliseconds = 3 seconds
+                        n_intervals=0
+                    )
+        ]
+
+    ),
     
     html.Div(className='readme-section', children=[
         html.H2("📘 README"),
         html.H4("📝 Description"),
-        html.P("This dashboard provides insights into educational inequality data."),
+        html.P("This dashboard provides a demo for a Healthcare Data Pipeline."),
 
         html.H4("📦 Installation"),
         html.P("To run this project locally, follow these steps:"),
         html.Pre(html.Code(
-            "git clone https://github.com/CxLos/Education_Inequality\n"
-            "cd Education_Inequality\n"
+            "git clone https://github.com/CxLos/Healthcare_Analytics_Architecture\n"
+            "cd Healthcare_Analytics_Architecture\n"
             "pip install -r requirements.txt"
         )),
 
         html.H4("▶️ Usage"),
         html.P("Run this dashboard with:"),
-        html.Pre(html.Code("python edu_inequality.py")),
+        html.Pre(html.Code("python healthcare_analytics.py")),
 
         html.H4("🧪 Methodology"),
-        html.P("Dataset sourced from Kaggle with features including funding, test scores, and dropout rates."),
+        html.P("Dataset sourced from Kaggle."),
 
         html.H4("🔍 Insights"),
         html.Ul([
-            html.Li("Schools with higher funding tend to have lower dropout rates."),
-            html.Li("Dropout rates are higher in schools with more low-income or minority students."),
-            html.Li("Better internet access correlates with improved outcomes.")
+            html.Li("."),
+            html.Li("."),
+            html.Li(".")
         ]),
 
         html.H4("🌟 Feature Importance"),
         html.Ul([
-            html.Li("Percent Low-Income"),
-            html.Li("Funding Per Student"),
-            html.Li("Student-Teacher Ratio"),
-            html.Li("Internet Access Percent")
+            html.Li(""),
+            html.Li(""),
+            html.Li(""),
+            html.Li("")
         ]),
 
         html.H4("✅ Conclusion"),
-        html.P("Equitable resource allocation improves student retention and performance."),
+        html.P("."),
 
         html.H4("📄 License"),
         html.P("MIT License © 2025 CxLos"),
         html.Code(
-            "Permission is hereby granted, free of charge, to any person obtaining a copy of this software..."
+            "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), "
+            "to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, "
+            "and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: \n\n"
+            "The above copyright notice and this permission notice shall be included in "
+            "all copies or substantial portions of the Software.\n\n"
+            "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR "
+            "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS "
+            "FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR "
+            "COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN "
+            "AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH "
+            "THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
         )
     ])
 ])
@@ -199,18 +261,29 @@ app.layout = html.Div(children=[
     Output('live-bar-chart', 'figure'),
     [Input('interval-component', 'n_intervals')]
 )
+
 def update_graph_live(n):
+    print(f"Updating chart at interval {n}")
+    print(f"Consumed Data Length: {len(consumed_data)}")
+
     # Aggregate counts by department
     counts = {}
     for record in consumed_data:
-        dept = record['department']
-        counts[dept] = counts.get(dept, 0) + 1
+        dept = record.get('department')
+        if dept:
+            counts[dept] = counts.get(dept, 0) + 1
 
-    departments = list(counts.keys())
-    values = list(counts.values())
+    # Use dummy data if no records yet
+    if not counts:
+        departments = ["Cardiology", "Oncology", "Pediatrics"]
+        values = [0, 0, 0]
+    else:
+        departments = list(counts.keys())
+        values = list(counts.values())
 
     fig = go.Figure(data=[go.Bar(x=departments, y=values)])
     fig.update_layout(
+        height=700,
         xaxis_title="Department",
         yaxis_title="Number of Check-ins",
         yaxis=dict(range=[0, max(values + [1])])
@@ -220,6 +293,7 @@ def update_graph_live(n):
 # ---------------------- End ------------------------- #
 
 if __name__ == "__main__":
+    
     # Start producer thread
     producer_thread = threading.Thread(target=kafka_producer, daemon=True)
     producer_thread.start()
@@ -227,6 +301,9 @@ if __name__ == "__main__":
     # Start consumer thread
     consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
     consumer_thread.start()
+    
+    # Let threads warm up
+    time.sleep(5)
 
     # Run Dash app
     app.run_server(debug=True)
@@ -361,13 +438,13 @@ if __name__ == "__main__":
 # cd C:\kafka
 
 # Start Zookeeper
-# bin/zookeeper-server-start.sh config/zookeeper.properties
+# kafka/bin/zookeeper-server-start.sh config/zookeeper.properties
 # cmd.exe /c "bin\windows\zookeeper-server-start.bat config\zookeeper.properties"
 # java -cp "libs/*" -Dlog4j.configuration=file:config/log4j.properties org.apache.zookeeper.server.quorum.QuorumPeerMain config/zookeeper.properties
 
 # Start Kafka server/ broker
-# bin\windows\zookeeper-server-start.bat config\zookeeper.properties
-# cmd.exe /c "bin\windows\kafka-server-start.bat config\server.properties"
+# bin\windows\kafka-server-start.bat config\server.properties
+# cmd.exe /c "\bin\windows\kafka-server-start.bat config\server.properties"
 # java -cp "libs/*" -Dlog4j.configuration=file:config/log4j.properties org.apache.zookeeper.server.quorum.QuorumPeerMain config/zookeeper.properties
 
 
