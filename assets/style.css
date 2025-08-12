@@ -1,9 +1,20 @@
 
 /* =============== Body ================ */
+
+.div{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+}
+
 .divv{
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   margin: 0px 0px 0px 0px;
   padding: 0px 0px 0px 0px;
 }
@@ -16,19 +27,124 @@
   font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
 
+.title2 {
+  margin: 0px 0px 0px 0px;
+  padding: 5px 0px 0px 0px;
+  text-align: center;
+  color: cadetblue;;
+  font-size: 25px;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
 .btn-box {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  margin: 0px auto;
+  margin: -5px 0px 0px 0px;
+  padding: -10px 0px 0px 0px;
 }
 
-.btn:hover {
+.repo-btn {
+  display: inline-block;
+  text-align: center;
+  margin: 20px 15px 15px 15px;
+  color:black;
+  background-color: lightgray;
+  border: 2px solid black;
+  border-radius: 10px;
+  font-size: 20px;
+  font-family: 'Calibri';
+  padding: 5px 7px;
+  text-decoration: none;
+}
+
+.repo-btn:hover {
   opacity: 0.7;
 }
 
-.btn:active {
+.repo-btn:active {
   transform: translate(0, 3px);
+}
+
+/* ================ Kafka Section ================ */
+
+.kafka-row {
+  display:flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* flex-grow: 1; */
+
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 98%;
+  /* height: 100vh; */
+
+  text-align: center;
+  border-top: 2px solid rgb(186, 186, 186);
+  border-bottom: 2px solid rgb(186, 186, 186);
+}
+
+.kafka-title {
+  font-size: 35px;
+  color: rgb(38, 38, 38);
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  margin: 0px 0px 10px 0px;
+  padding: 20px 0px 0px 0px;
+}
+
+.line-graph {
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 95%;
+  height: 100%;
+}
+
+.interval {
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 95%;
+  height: 100%;
+}
+
+/* =========== README =============== */
+
+.readme-section {
+  margin: 0px 0px 20px 0px;
+  padding: 10px 10px 20px 30px;
+  width: 40%;
+
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+  border-color: rgb(186, 186, 186);
+
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  font-size: 18px;
+}
+
+pre {
+  white-space: pre-wrap;   /* Wrap long lines */
+  word-wrap: break-word;   /* Break words if needed */
+  overflow-x: auto;        /* Show scrollbar if still too wide */
+  max-width: 100%;         /* Don't exceed parent width */
+}
+
+  /* =================================== */
+
+  .row1 {
+  margin:0px 0px 0px 10px;
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+  text-align: center;
+}
+
+.graph1 {
+  border-right: 2px solid rgb(186, 186, 186);
+  border-bottom: 2px solid rgb(186, 186, 186);
+  margin: 0px;
+  padding: 0px 20px 0px 0px;
+  width: 48%;
 }
 
 /* ================== Data Table ================ */
@@ -107,188 +223,4 @@
 .scrollable-container {
   overflow-x: auto; /* Enable horizontal scrolling */
   white-space: nowrap; /* Prevent line breaks */
-}
-
-/* ================ GPT Section ================ */
-
-.gpt-section {
-  display:flex;
-  flex-direction: column ;
-  /* flex-direction: row; */
-  justify-content: center;  /* center horizontally */
-  align-items: center;      /* center vertically */
-  /* width: 96%; */
-}
-
-.title2 {
-  margin: 5px 0px 0px 0px;
-  padding: 10px 0px 0px 0px;
-  text-align: center;
-  color: rgb(0, 0, 0);
-  font-size: 25px;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-}
-
-.dropdown {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;  /* center horizontally */
-  align-items: center;      /* center vertically */
-  width: 20vw; /* Set a fixed width for the dropdown */
-  margin: 20px 0px 0px 0px;
-  padding: 0px 0px 10px 0px;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-}
-
-.dropdown, 
-.dropdown .Select-control, 
-.dropdown .Select-placeholder, 
-.dropdown .Select-input {
-  cursor: pointer;
-}
-
-.btn {
-  display: inline-block;
-  text-align: center;
-  margin: 20px 15px 15px 15px;
-  color:black;
-  background-color: lightgray;
-  border: 2px solid black;
-  border-radius: 10px;
-  font-size: 20px;
-  font-family: 'Calibri';
-  padding: 5px 7px;
-  text-decoration: none;
-}
-
-.explain {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;  /* center horizontally */
-  align-items: center;      /* center vertically */
-  font-size: 15px;
-  width: 7%;
-  margin: 10px 0px 0px 0px;
-  padding: 5px 0px 5px 0px;
-  border-radius: 5px;
-  background-color: lightgray;
-}
-
-.explain:hover {
-  opacity: 0.7; /* Set the opacity to 70% on hover */
-  cursor: pointer; /* Change cursor to pointer on hover */
-}
-
-.explain:active {
-  transform: translate(0, 3px); /* Move the button 10 pixels down on hover */
-}
-
-.loading {
-  height: 10px;
-  margin: 25px 0px 5px 0px;
-  padding: 0px 0px 0px 0px;
-}
-
-#loading-spinner .dash-spinner {
-    width: 30px !important;
-    height: 30px !important;
-}
-
-#loading-spinner .dash-spinner svg circle {
-  stroke: red !important;
-  stroke-opacity: 1 !important;
-}
-
-.gpt-explanation {
-  display:flex;
-  flex-direction: row;
-  justify-content: center;  /* center horizontally */
-
-  align-items: stretch; /* children stretch to equal height */
-
-  height: auto;
-  width: 98%;
-  margin: 20px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
-  border-top: 2px solid rgb(186, 186, 186);
-  border-bottom: 2px solid rgb(186, 186, 186);
-}
-
-.gpt-response-box {
-  display:flex;
-  flex-direction: row;
-  justify-content: center;  /* center horizontally */
-  align-items: center;      /* center vertically */
-
-  margin: 0px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
-  width: 50%;
-  height: auto; /* Allow height to adjust based on content */
-
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-  font-size: 18px;
-  white-space: pre-line; /* Preserve line breaks */  
-  color: rgb(0, 0, 0);
-}
-
-.gpt-response {
-  margin: 0px 0px 0px 0px;
-  padding: 20px 20px 20px 20px;
-  width: 100%;
-  height: auto; /* Allow height to adjust based on content */
-  border-right: 2px solid rgb(186, 186, 186);
-}
-
-.gpt-graph-box {
-  display:flex;
-  flex-direction: row;
-  justify-content: center;  /* center horizontally */
-  align-items: center;      /* center vertically */
-
-  margin: 0px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
-  /* height: 700px; */
-  height: auto;
-  width: 50%;
-  /* border-left: 2px solid rgb(186, 186, 186); */
-}
-
-.gpt-graph {
-  margin: 0px 0px 0px 20px;
-  padding: 0px 0px 0px 0px;
-  width: 70%;
-  height: 100%;
-}
-
-/* =========== README =============== */
-
-.readme-section {
-  margin: 0px 0px 20px 0px;
-  padding: 10px 10px 20px 30px;
-  width: 40%;
-
-  border-bottom: 2px solid;
-  border-right: 2px solid;
-  border-color: rgb(186, 186, 186);
-
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-  font-size: 18px;
-}
-
-  /* =================================== */
-
-  .row1 {
-  margin:0px 0px 0px 10px;
-  display:flex;
-  flex-direction: row;
-  justify-content: center;
-  text-align: center;
-}
-
-.graph1 {
-  border-right: 2px solid rgb(186, 186, 186);
-  border-bottom: 2px solid rgb(186, 186, 186);
-  margin: 0px;
-  padding: 0px 20px 0px 0px;
-  width: 48%;
 }
