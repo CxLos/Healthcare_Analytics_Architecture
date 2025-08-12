@@ -31,7 +31,8 @@ DEPARTMENTS = [
     "Pediatrics",
     "Neurology",
     "Endocrinology", 
-    "Radiology"
+    "Radiology",
+    "Nephrology",
 ]
 
 # Thread-safe queue for consumed messages
@@ -155,7 +156,6 @@ def kafka_consumer():
     finally:
         # Always close the consumer cleanly on exit
         consumer.close()
-
 
 # ============================= DASH APP ============================== #
 
