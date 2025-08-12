@@ -27,12 +27,13 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "patient_checkins")
 # Departments list
 DEPARTMENTS = [
     "Cardiology", 
-    "Oncology",
+    "Hematology",
     "Pediatrics",
     "Neurology",
     "Endocrinology", 
     "Radiology",
     "Nephrology",
+    "Oncology",
 ]
 
 # Thread-safe queue for consumed messages
@@ -354,7 +355,8 @@ if __name__ == "__main__":
 
     # Run Dash app on all interfaces and appropriate port (for Heroku)
     port = int(os.environ.get('PORT', 8050))
-    app.run_server(host='0.0.0.0', port=port, debug=True)
+    # app.run_server(host='0.0.0.0', port=port, debug=True)
+    app.run_server(host='0.0.0.0', port=port, debug=False)
 
 # -------------------------------------------- KILL PORT ---------------------------------------------------
 
