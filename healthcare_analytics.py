@@ -5,8 +5,6 @@ import sys
 import json
 import time
 import random
-import sqlite3
-
 import threading
 from collections import deque
 
@@ -18,23 +16,6 @@ from dash import dcc, html, Output, Input
 import plotly.graph_objects as go
 
 from confluent_kafka import Producer, Consumer, KafkaError
-
-# =========================== SQLite ========================== #
-
-# Connect to SQLite database (creates file if not exists)
-conn = sqlite3.connect('patient_checkins.db', check_same_thread=False)
-cur = conn.cursor()
-
-# Create table if it doesn't exist
-cur.execute('''
-CREATE TABLE IF NOT EXISTS patient_checkins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id INTEGER,
-    check_in_time TEXT,
-    department TEXT
-)
-''')
-conn.commit()
 
 # =========================== CONFIGURATION ========================== #
 
@@ -50,10 +31,7 @@ DEPARTMENTS = [
     "Pediatrics",
     "Neurology",
     "Endocrinology", 
-    "Radiology",
-    "Nephrology",
-    "Dermatology",
-    "Hematology",
+    "Radiology"
 ]
 
 # Thread-safe queue for consumed messages
@@ -138,75 +116,45 @@ print("📡 Subscribed to topic:", KAFKA_TOPIC)
 # Sleep for 2 seconds to allow Kafka to assign partitions to this consumer
 time.sleep(2)
 
-import sqlite3
-
-# Connect to SQLite database (creates file if not exists)
-conn = sqlite3.connect('patient_checkins.db', check_same_thread=False)
-cur = conn.cursor()
-
-# Create table if it doesn't exist
-cur.execute('''
-CREATE TABLE IF NOT EXISTS patient_checkins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id INTEGER,
-    check_in_time TEXT,
-    department TEXT
-)
-''')
-conn.commit()
-
 # function to continuously consume messages from Kafka
 def kafka_consumer():
     try:
-        # Subscribe again inside the function (ensure subscription)
+        # Subscribe again inside the function
         consumer.subscribe([KAFKA_TOPIC])
         print("📡 Subscribed to topic:", KAFKA_TOPIC)
-        time.sleep(2)  # Allow time for Kafka to assign partitions
+        time.sleep(2)  # Allow time for partition assignment
 
-        # Infinite loop to continuously poll for new Kafka messages
+        # Infinite loop to keep polling for new messages
         while True:
-            # Poll Kafka broker, wait up to 1 second for a message
+            # Poll Kafka broker, waiting up to 1 second for a message
             msg = consumer.poll(1.0)
 
             if msg is None:
-                # No message received in this poll, keep looping
+                # No message received in this poll, continue looping
                 continue
 
             if msg.error():
-                # If message has error, print and skip it
+                # If there's an error with the message, print it and skip processing
                 print(f"❌ Consumer error: {msg.error()}")
                 continue
 
-            # Decode message bytes to JSON dictionary
+            # Decode the message value from bytes to a JSON object (dictionary)
             data = json.loads(msg.value().decode('utf-8'))
 
-            # Print received message for monitoring
+            # Print received data to console for monitoring
             print(f"✅ Received message: {data}")
 
-            # Insert the consumed data into the SQLite database
-            try:
-                cur.execute(
-                    "INSERT INTO patient_checkins (patient_id, check_in_time, department) VALUES (?, ?, ?)",
-                    (data['patient_id'], data['check_in_time'], data['department'])
-                )
-                conn.commit()  # Commit the transaction to save changes
-            except Exception as db_e:
-                # Print any database insertion errors
-                print(f"DB insert error: {db_e}")
-
-            # Append the data safely to the shared in-memory queue
+            # Safely append the consumed data to a shared thread-safe queue with a lock
             with data_lock:
                 consumed_data.append(data)
 
     except Exception as e:
-        # Print any errors encountered during consumption
+        # error if the consumer encounters connection or runtime problems
         print(f"🔥 Consumer connection error: {e}")
 
     finally:
-        # Close the consumer cleanly on exit
+        # Always close the consumer cleanly on exit
         consumer.close()
-        # Close the database connection as well
-        conn.close()
 
 
 # ============================= DASH APP ============================== #

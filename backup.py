@@ -166,6 +166,17 @@ def kafka_consumer():
 
             # Print received data to console for monitoring
             print(f"✅ Received message: {data}")
+            
+            # # Insert the consumed data into the SQLite database
+            # try:
+            #     cur.execute(
+            #         "INSERT INTO patient_checkins (patient_id, check_in_time, department) VALUES (?, ?, ?)",
+            #         (data['patient_id'], data['check_in_time'], data['department'])
+            #     )
+            #     conn.commit()  # Commit the transaction to save changes
+            # except Exception as db_e:
+            #     # Print any database insertion errors
+            #     print(f"DB insert error: {db_e}")
 
             # Safely append the consumed data to a shared thread-safe queue with a lock
             with data_lock:

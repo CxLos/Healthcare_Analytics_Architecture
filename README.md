@@ -46,7 +46,7 @@ To run this project locally, follow these steps:
 - Or access the live version here:  
   🌐 [Streaming Patient Check-In Dashboard]()
 
-![Preview](./screenshots/224521.png)
+![Preview](./screenshots/224523.png)
 
 ## 🧪 Methodology
 
