@@ -31,9 +31,9 @@ DEPARTMENTS = [
     "Pediatrics",
     "Neurology",
     "Endocrinology", 
-    "Radiology",
-    "Nephrology",
-    "Oncology",
+    # "Radiology",
+    # "Nephrology",
+    # "Oncology",
 ]
 
 # Thread-safe queue for consumed messages
@@ -159,6 +159,25 @@ def kafka_consumer():
         consumer.close()
 
 # ============================= DASH APP ============================== #
+
+# Kafka consumer function
+def consume_messages():
+    ...
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is not None:
+            parsed = json.loads(msg.value().decode("utf-8"))
+            consumed_data.append(parsed)
+            print("✅ Received message")
+
+# Start consumer thread
+def start_consumer():
+    consumer_thread = threading.Thread(target=consume_messages)
+    consumer_thread.daemon = True
+    consumer_thread.start()
+
+# Call it here — outside __main__
+start_consumer()
 
 app = dash.Dash(__name__)
 server = app.server
