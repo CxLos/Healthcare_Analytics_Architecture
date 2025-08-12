@@ -1,1 +1,1 @@
-web: gunicorn healthcare_analytics:server
+web: gunicorn healthcare_analytics:server --workers=1
