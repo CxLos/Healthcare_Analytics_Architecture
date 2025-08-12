@@ -54,7 +54,6 @@ DEPARTMENTS = [
     "Nephrology",
     "Dermatology",
     "Hematology",
-    "Urology",
 ]
 
 # Thread-safe queue for consumed messages
@@ -139,45 +138,76 @@ print("📡 Subscribed to topic:", KAFKA_TOPIC)
 # Sleep for 2 seconds to allow Kafka to assign partitions to this consumer
 time.sleep(2)
 
+import sqlite3
+
+# Connect to SQLite database (creates file if not exists)
+conn = sqlite3.connect('patient_checkins.db', check_same_thread=False)
+cur = conn.cursor()
+
+# Create table if it doesn't exist
+cur.execute('''
+CREATE TABLE IF NOT EXISTS patient_checkins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id INTEGER,
+    check_in_time TEXT,
+    department TEXT
+)
+''')
+conn.commit()
+
 # function to continuously consume messages from Kafka
 def kafka_consumer():
     try:
-        # Subscribe again inside the function
+        # Subscribe again inside the function (ensure subscription)
         consumer.subscribe([KAFKA_TOPIC])
         print("📡 Subscribed to topic:", KAFKA_TOPIC)
-        time.sleep(2)  # Allow time for partition assignment
+        time.sleep(2)  # Allow time for Kafka to assign partitions
 
-        # Infinite loop to keep polling for new messages
+        # Infinite loop to continuously poll for new Kafka messages
         while True:
-            # Poll Kafka broker, waiting up to 1 second for a message
+            # Poll Kafka broker, wait up to 1 second for a message
             msg = consumer.poll(1.0)
 
             if msg is None:
-                # No message received in this poll, continue looping
+                # No message received in this poll, keep looping
                 continue
 
             if msg.error():
-                # If there's an error with the message, print it and skip processing
+                # If message has error, print and skip it
                 print(f"❌ Consumer error: {msg.error()}")
                 continue
 
-            # Decode the message value from bytes to a JSON object (dictionary)
+            # Decode message bytes to JSON dictionary
             data = json.loads(msg.value().decode('utf-8'))
 
-            # Print received data to console for monitoring
+            # Print received message for monitoring
             print(f"✅ Received message: {data}")
 
-            # Safely append the consumed data to a shared thread-safe queue with a lock
+            # Insert the consumed data into the SQLite database
+            try:
+                cur.execute(
+                    "INSERT INTO patient_checkins (patient_id, check_in_time, department) VALUES (?, ?, ?)",
+                    (data['patient_id'], data['check_in_time'], data['department'])
+                )
+                conn.commit()  # Commit the transaction to save changes
+            except Exception as db_e:
+                # Print any database insertion errors
+                print(f"DB insert error: {db_e}")
+
+            # Append the data safely to the shared in-memory queue
             with data_lock:
                 consumed_data.append(data)
 
     except Exception as e:
-        # error if the consumer encounters connection or runtime problems
+        # Print any errors encountered during consumption
         print(f"🔥 Consumer connection error: {e}")
 
     finally:
-        # Always close the consumer cleanly on exit
+        # Close the consumer cleanly on exit
         consumer.close()
+        # Close the database connection as well
+        conn.close()
+
 
 # ============================= DASH APP ============================== #
 

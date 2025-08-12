@@ -12,7 +12,7 @@ click==8.1.8
 colorama==0.4.6
 comm==0.2.2
 contourpy==1.3.1
-confluent
+confluent_kafka
 cycler==0.12.1
 Cython==3.0.12
 dash==2.18.2
