@@ -5,8 +5,6 @@ import sys
 import json
 import time
 import random
-import sqlite3
-
 import threading
 from collections import deque
 
@@ -14,27 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import dash
-from dash import dcc, html, Output, Input
+from dash import dcc, html, Output, Input, State
 import plotly.graph_objects as go
 
 from confluent_kafka import Producer, Consumer, KafkaError
-
-# =========================== SQLite ========================== #
-
-# Connect to SQLite database (creates file if not exists)
-conn = sqlite3.connect('patient_checkins.db', check_same_thread=False)
-cur = conn.cursor()
-
-# Create table if it doesn't exist
-cur.execute('''
-CREATE TABLE IF NOT EXISTS patient_checkins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id INTEGER,
-    check_in_time TEXT,
-    department TEXT
-)
-''')
-conn.commit()
 
 # =========================== CONFIGURATION ========================== #
 
@@ -46,14 +27,13 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "patient_checkins")
 # Departments list
 DEPARTMENTS = [
     "Cardiology", 
-    "Oncology",
+    "Hematology",
     "Pediatrics",
     "Neurology",
     "Endocrinology", 
     "Radiology",
     "Nephrology",
-    "Dermatology",
-    "Hematology",
+    "Oncology",
     "Urology",
 ]
 
@@ -166,17 +146,6 @@ def kafka_consumer():
 
             # Print received data to console for monitoring
             print(f"✅ Received message: {data}")
-            
-            # # Insert the consumed data into the SQLite database
-            # try:
-            #     cur.execute(
-            #         "INSERT INTO patient_checkins (patient_id, check_in_time, department) VALUES (?, ?, ?)",
-            #         (data['patient_id'], data['check_in_time'], data['department'])
-            #     )
-            #     conn.commit()  # Commit the transaction to save changes
-            # except Exception as db_e:
-            #     # Print any database insertion errors
-            #     print(f"DB insert error: {db_e}")
 
             # Safely append the consumed data to a shared thread-safe queue with a lock
             with data_lock:
@@ -191,6 +160,25 @@ def kafka_consumer():
         consumer.close()
 
 # ============================= DASH APP ============================== #
+
+# Kafka consumer function
+def consume_messages():
+    ...
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is not None:
+            parsed = json.loads(msg.value().decode("utf-8"))
+            consumed_data.append(parsed)
+            print("✅ Received message")
+
+# Start consumer thread
+def start_consumer():
+    consumer_thread = threading.Thread(target=consume_messages)
+    consumer_thread.daemon = True
+    consumer_thread.start()
+
+# Call it here — outside __main__
+start_consumer()
 
 app = dash.Dash(__name__)
 server = app.server
@@ -233,12 +221,18 @@ app.layout = html.Div(
         className="kafka-row",
         children=[
             html.H1(
-                "Live Patient Check-ins by Department",
+                "Dashboard Live-Stream",
                 className="kafka-title"
             ),
+            html.Div([
+                html.Button("🔄", id="reset-button", n_clicks=0)
+            ]),
+            dcc.Store(id="department-store", data=DEPARTMENTS),
+
             dcc.Graph(
                 className="line-graph",
-                id='live-bar-chart'
+                id='live-bar-chart',
+                style={"marginTop": "0px"}
             ),
             html.Div(
                 className="interval",
@@ -328,55 +322,75 @@ app.layout = html.Div(
     )
 ])
 
-
 @app.callback(
     Output('live-bar-chart', 'figure'),
-    Input('interval-component', 'n_intervals')
+    Input('interval-component', 'n_intervals'),
+    State('department-store', 'data')
 )
-def update_graph_live(n):
+def update_graph_live(n, departments):
     print(f"Updating chart at interval {n}")
     print(f"Consumed Data Length: {len(consumed_data)}")
     
-    # Grab a thread-safe copy of the latest consumed data
     with data_lock:
         data_snapshot = list(consumed_data)
 
-    # Count how many check-ins happened per department right now
-    current_counts = {dept: 0 for dept in DEPARTMENTS}
+    current_counts = {dept: 0 for dept in departments}
     for record in data_snapshot:
         dept = record.get('department')
         if dept in current_counts:
             current_counts[dept] += 1
 
-    # Add these counts to the running history for each department
-    for dept in DEPARTMENTS:
+    for dept in departments:
         counts_history[dept].append(current_counts.get(dept, 0))
 
-    # Build a list of line traces for the chart, one per department
     data = []
-    for dept in DEPARTMENTS:
+    for dept in departments:
         data.append(go.Scatter(
-            x=list(range(len(counts_history[dept]))),  # x is just the interval index
-            y=counts_history[dept],                    # y is the count history for this dept
-            mode='lines+markers',                      # show lines with dots on points
-            name=dept,                                 # label the line with the department name
+            x=list(range(len(counts_history[dept]))),
+            y=counts_history[dept],
+            mode='lines+markers',
+            name=dept,
             hovertemplate=f"{dept}: <b>%{{y}}</b><extra></extra>"
         ))
 
-    # Put it all together in a Figure with titles and axis labels
     fig = go.Figure(data=data)
     fig.update_layout(
         height=700,
-        xaxis_title="Time Interval",
-        yaxis_title="Number of Check-ins",
-        yaxis=dict(range=[0, max(max(counts) for counts in counts_history.values()) + 1])  # y-axis from 0 to max count + 1
+        title=dict(
+            text="Patient Check-ins by Department",
+            y=0.94,  # Lower the title closer to the chart
+            x=0.5, 
+            xanchor='center',
+            yanchor='top'
+        ),
+        xaxis=dict(
+            title="Time Interval",
+            title_standoff=30  # ⬅️ Adds space below the x-axis title
+        ),
+        yaxis=dict(
+            title="Number of Check-ins",
+            title_standoff=30,  # ⬅️ Adds space to the left of the y-axis title
+            range=[0, max(max(counts) for counts in counts_history.values()) + 1]
+        )
     )
     return fig
 
+@app.callback(
+    Output("interval-component", "n_intervals"),
+    Input("reset-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def reset_chart(n_clicks):
+    with data_lock: 
+        consumed_data.clear()
+    for dept in counts_history:
+        counts_history[dept].clear()
+    return 0  # ✅ Resets the interval and restarts chart updates
 
 # =========================== RUN APP & THREADS ======================= #
 
 if __name__ == "__main__":
+    
     # Start Kafka producer thread (daemon so it ends when main thread ends)
     producer_thread = threading.Thread(target=kafka_producer, daemon=True)
     producer_thread.start()
@@ -388,6 +402,7 @@ if __name__ == "__main__":
     # Run Dash app on all interfaces and appropriate port (for Heroku)
     port = int(os.environ.get('PORT', 8050))
     app.run_server(host='0.0.0.0', port=port, debug=True)
+    # app.run_server(host='0.0.0.0', port=port, debug=False)
 
 # -------------------------------------------- KILL PORT ---------------------------------------------------
 
