@@ -6,6 +6,7 @@ import json
 import time
 import random
 import threading
+from datetime import datetime
 from collections import deque
 
 from dotenv import load_dotenv
@@ -99,86 +100,63 @@ def kafka_producer():
 
 # Kafka consumer configuration dictionary with connection, authentication, and consumer-specific settings
 consumer_conf = {
-    'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,   # Kafka cluster address
-    'security.protocol': 'SASL_SSL',                 # Use SASL over SSL for security
-    'sasl.mechanisms': 'PLAIN',                       # SASL mechanism is PLAIN (username/password)
-    'sasl.username': KAFKA_API_KEY,                   # Kafka API key
-    'sasl.password': KAFKA_API_SECRET,                # Kafka API secret
-    'group.id': 'connectivity_test_group',            # Consumer group ID for coordination
-    'auto.offset.reset': 'earliest',                   # Start reading from earliest message if no offset stored
-    'enable.auto.commit': True                         # Automatically commit offsets after messages are read
+    'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
+    'security.protocol': 'SASL_SSL',
+    'sasl.mechanisms': 'PLAIN',
+    'sasl.username': KAFKA_API_KEY,
+    'sasl.password': KAFKA_API_SECRET,
+    'group.id': 'dashboard-consumer',
+    'auto.offset.reset': 'earliest',
+    'enable.auto.commit': True
 }
 
-# Kafka Consumer instance with the above configuration
-consumer = Consumer(consumer_conf)
+# Thread-safe data store
+consumed_data = []
+data_lock = threading.Lock()
+consumer_started = False
 
-# Subscribe this consumer to the topic you want to consume from
-consumer.subscribe([KAFKA_TOPIC])
-print("📡 Subscribed to topic:", KAFKA_TOPIC)
-
-# Sleep for 2 seconds to allow Kafka to assign partitions to this consumer
-time.sleep(2)
-
-# function to continuously consume messages from Kafka
+# Single correct consumer function for confluent-kafka
 def kafka_consumer():
+    print(f"🟢 Kafka consumer started at {datetime.now()}")
+    consumer = Consumer(consumer_conf)
+    consumer.subscribe([KAFKA_TOPIC])
+    time.sleep(2)  # Allow partition assignment
+
     try:
-        # Subscribe again inside the function
-        consumer.subscribe([KAFKA_TOPIC])
-        print("📡 Subscribed to topic:", KAFKA_TOPIC)
-        time.sleep(2)  # Allow time for partition assignment
-
-        # Infinite loop to keep polling for new messages
         while True:
-            # Poll Kafka broker, waiting up to 1 second for a message
-            msg = consumer.poll(1.0)
-
+            msg = consumer.poll(1.0)  # Wait up to 1 second
             if msg is None:
-                # No message received in this poll, continue looping
+                time.sleep(0.5)
                 continue
 
             if msg.error():
-                # If there's an error with the message, print it and skip processing
                 print(f"❌ Consumer error: {msg.error()}")
                 continue
 
-            # Decode the message value from bytes to a JSON object (dictionary)
-            data = json.loads(msg.value().decode('utf-8'))
-
-            # Print received data to console for monitoring
-            print(f"✅ Received message: {data}")
-
-            # Safely append the consumed data to a shared thread-safe queue with a lock
-            with data_lock:
-                consumed_data.append(data)
+            try:
+                parsed = json.loads(msg.value().decode('utf-8'))
+                with data_lock:
+                    consumed_data.append(parsed)
+                print(f"✅ Received message: {parsed}")
+            except Exception as e:
+                print(f"⚠️ Error parsing message: {e}")
 
     except Exception as e:
-        # error if the consumer encounters connection or runtime problems
         print(f"🔥 Consumer connection error: {e}")
-
     finally:
-        # Always close the consumer cleanly on exit
         consumer.close()
 
-# ============================= DASH APP ============================== #
-
-# Kafka consumer function
-def consume_messages():
-    ...
-    while True:
-        msg = consumer.poll(1.0)
-        if msg is not None:
-            parsed = json.loads(msg.value().decode("utf-8"))
-            consumed_data.append(parsed)
-            print("✅ Received message")
-
-# Start consumer thread
+# Thread starter for consumer
 def start_consumer():
-    consumer_thread = threading.Thread(target=consume_messages)
-    consumer_thread.daemon = True
-    consumer_thread.start()
+    global consumer_started
+    if not consumer_started:
+        consumer_thread = threading.Thread(target=kafka_consumer)
+        consumer_thread.daemon = True
+        consumer_thread.start()
+        consumer_started = True
+        print("🟢 Kafka consumer thread launched")
 
-# Call it here — outside __main__
-start_consumer()
+# ============================= DASH APP ============================== #
 
 app = dash.Dash(__name__)
 server = app.server
@@ -217,35 +195,36 @@ app.layout = html.Div(
 
     #------------- Kafka ----------- # 
     
-    html.Div(
-        className="kafka-row",
-        children=[
-            html.H1(
-                "Dashboard Live-Stream",
-                className="kafka-title"
-            ),
-            html.Div([
-                html.Button("🔄", id="reset-button", n_clicks=0)
-            ]),
-            dcc.Store(id="department-store", data=DEPARTMENTS),
+html.Div(
+    className="kafka-row",
+    children=[
+        html.H1(
+            "Dashboard Live-Stream",
+            className="kafka-title"
+        ),
+        html.Div([
+            html.Button("🔄", id="reset-button", n_clicks=0)
+        ]),
+        dcc.Store(id="department-store", data=DEPARTMENTS),
+        dcc.Store(id="consumer-trigger"),  # ⬅️ Added here
+        dcc.Graph(
+            className="line-graph",
+            id='live-bar-chart',
+            style={"marginTop": "0px"}
+        ),
+        html.Div(
+            className="interval",
+            children=[
+                dcc.Interval(
+                    id='interval-component',
+                    interval=3 * 1000,  # every 3 seconds
+                    n_intervals=0
+                )
+            ]
+        )
+    ]
+),
 
-            dcc.Graph(
-                className="line-graph",
-                id='live-bar-chart',
-                style={"marginTop": "0px"}
-            ),
-            html.Div(
-                className="interval",
-                children=[
-                    dcc.Interval(
-                        id='interval-component',
-                        interval=3 * 1000,  # every 3 seconds
-                        n_intervals=0
-                    )
-                ]
-            )
-        ]
-    ),
 ]),
     
 
@@ -323,6 +302,14 @@ app.layout = html.Div(
 ])
 
 @app.callback(
+    Output("consumer-trigger", "data"), 
+    Input("interval-component", "n_intervals"))
+def trigger_consumer(n):
+    start_consumer()
+    return {"status": "started"}
+
+# Update chart
+@app.callback(
     Output('live-bar-chart', 'figure'),
     Input('interval-component', 'n_intervals'),
     State('department-store', 'data')
@@ -343,49 +330,42 @@ def update_graph_live(n, departments):
     for dept in departments:
         counts_history[dept].append(current_counts.get(dept, 0))
 
-    data = []
-    for dept in departments:
-        data.append(go.Scatter(
+    data = [
+        go.Scatter(
             x=list(range(len(counts_history[dept]))),
             y=counts_history[dept],
             mode='lines+markers',
             name=dept,
             hovertemplate=f"{dept}: <b>%{{y}}</b><extra></extra>"
-        ))
+        )
+        for dept in departments
+    ]
 
     fig = go.Figure(data=data)
     fig.update_layout(
         height=700,
-        title=dict(
-            text="Patient Check-ins by Department",
-            y=0.94,  # Lower the title closer to the chart
-            x=0.5, 
-            xanchor='center',
-            yanchor='top'
-        ),
-        xaxis=dict(
-            title="Time Interval",
-            title_standoff=30  # ⬅️ Adds space below the x-axis title
-        ),
+        title=dict(text="Patient Check-ins by Department", y=0.94, x=0.5),
+        xaxis=dict(title="Time Interval", title_standoff=30),
         yaxis=dict(
             title="Number of Check-ins",
-            title_standoff=30,  # ⬅️ Adds space to the left of the y-axis title
+            title_standoff=30,
             range=[0, max(max(counts) for counts in counts_history.values()) + 1]
         )
     )
     return fig
 
+# Reset chart
 @app.callback(
     Output("interval-component", "n_intervals"),
     Input("reset-button", "n_clicks"),
     prevent_initial_call=True
 )
 def reset_chart(n_clicks):
-    with data_lock: 
+    with data_lock:
         consumed_data.clear()
     for dept in counts_history:
         counts_history[dept].clear()
-    return 0  # ✅ Resets the interval and restarts chart updates
+    return 0
 
 # =========================== RUN APP & THREADS ======================= #
 
