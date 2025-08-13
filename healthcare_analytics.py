@@ -40,7 +40,7 @@ DEPARTMENTS = [
 
 # Thread-safe queue for consumed messages
 consumed_data = deque(maxlen=100)
-data_lock = threading.Lock()
+data_lock = threading.Lock() 
 
 # ============================ PRODUCER =============================== #
 
@@ -112,7 +112,6 @@ consumer_conf = {
 
 # Thread-safe data store
 consumed_data = []
-data_lock = threading.Lock()
 consumer_started = False
 
 # Single correct consumer function for confluent-kafka
