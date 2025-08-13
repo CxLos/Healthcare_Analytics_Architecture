@@ -116,7 +116,7 @@ consumer_started = False
 
 # ------------------ Seed initial data for faster graph ------------------ #
 with data_lock:
-    for _ in range(5):  # add 5 dummy check-ins
+    for _ in range(30):  # add 5 dummy check-ins
         consumed_data.append({
             "patient_id": random.randint(1000, 9999),
             "check_in_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
