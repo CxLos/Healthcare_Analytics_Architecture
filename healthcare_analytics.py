@@ -93,7 +93,7 @@ def kafka_producer():
         except Exception as e:
             print(f"[Producer Error] {e}")                     # Print error if produce fails
 
-        time.sleep(2)                                          # Wait 2 seconds before producing next message
+        time.sleep(1)                                          # Wait 2 seconds before producing next message
 
 
 # ============================ CONSUMER =============================== #
@@ -114,6 +114,15 @@ consumer_conf = {
 consumed_data = []
 consumer_started = False
 
+# ------------------ Seed initial data for faster graph ------------------ #
+with data_lock:
+    for _ in range(5):  # add 5 dummy check-ins
+        consumed_data.append({
+            "patient_id": random.randint(1000, 9999),
+            "check_in_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "department": random.choice(DEPARTMENTS)
+        })
+
 # Single correct consumer function for confluent-kafka
 def kafka_consumer():
     print(f"🟢 Kafka consumer started at {datetime.now()}")
@@ -123,9 +132,9 @@ def kafka_consumer():
 
     try:
         while True:
-            msg = consumer.poll(1.0)  # Wait up to 1 second
+            msg = consumer.poll(0.5)  # Wait up to 1 second
             if msg is None:
-                time.sleep(0.5)
+                time.sleep(0.1)
                 continue
 
             if msg.error():
