@@ -210,8 +210,8 @@ app.layout = html.Div(
             html.Div(
                 className='stream-buttons',
                 children=[
-                    html.Button("⏯️", id="pause-button", n_clicks=0, title="Play / Pause Chart"),
-                    html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Chart"),
+                    html.Button("⏯️", id="pause-button", n_clicks=0, title="Resume / Pause Stream"),
+                    html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Stream"),
                 dcc.Store(id="pause-store", data={"paused": False})
             ]),
             dcc.Store(id="department-store", data=DEPARTMENTS),
