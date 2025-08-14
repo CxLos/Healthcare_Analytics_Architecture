@@ -166,6 +166,10 @@ def start_consumer():
 
 # ============================= DASH APP ============================== #
 
+# Start producer in background thread
+producer_thread = threading.Thread(target=kafka_producer, daemon=True)
+producer_thread.start()
+
 app = dash.Dash(__name__)
 server = app.server
 
