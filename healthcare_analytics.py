@@ -18,6 +18,12 @@ import plotly.graph_objects as go
 
 from confluent_kafka import Producer, Consumer, KafkaError
 
+# =========================== FILE ========================== #
+
+current_dir = os.getcwd()
+current_file = os.path.basename(__file__)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # =========================== CONFIGURATION ========================== #
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -89,11 +95,11 @@ def kafka_producer():
                 # callback=delivery_report
             )
             producer.poll(0)                                   # Serve delivery callbacks (non-blocking)
-            print(f"Produced: {message}")                      # Print the produced message to console
+            # print(f"Produced: {message}")                      # Print the produced message to console
         except Exception as e:
             print(f"[Producer Error] {e}")                     # Print error if produce fails
 
-        time.sleep(1)                                          # Wait 2 seconds before producing next message
+        time.sleep(0.5)                                          # Wait 2 seconds before producing next message
 
 
 # ============================ CONSUMER =============================== #
@@ -125,7 +131,7 @@ with data_lock:
 
 # Consumer Function
 def kafka_consumer():
-    print(f"🟢 Kafka consumer started at {datetime.now()}")
+    # print(f"🟢 Kafka consumer started at {datetime.now()}")
     consumer = Consumer(consumer_conf)
     consumer.subscribe([KAFKA_TOPIC])
     time.sleep(2)  # Allow partition assignment
@@ -138,14 +144,14 @@ def kafka_consumer():
                 continue
 
             if msg.error():
-                print(f"❌ Consumer error: {msg.error()}")
+                # print(f"❌ Consumer error: {msg.error()}")
                 continue
 
             try:
                 parsed = json.loads(msg.value().decode('utf-8'))
                 with data_lock:
                     consumed_data.append(parsed)
-                print(f"✅ Received message: {parsed}")
+                # print(f"✅ Received message: {parsed}")
             except Exception as e:
                 print(f"⚠️ Error parsing message: {e}")
 
@@ -162,7 +168,7 @@ def start_consumer():
         consumer_thread.daemon = True
         consumer_thread.start()
         consumer_started = True
-        print("🟢 Kafka consumer thread launched")
+        # print("🟢 Kafka consumer thread launched")
 
 # ============================= DASH APP ============================== #
 
@@ -339,8 +345,8 @@ def update_graph_live(n, departments, pause_data):
         return dash.no_update  # Do not update chart while paused
 
     # 2. Print the current interval and the number of consumed records
-    print(f"Updating chart at interval {n}")
-    print(f"Consumed Data Length: {len(consumed_data)}")
+    # print(f"Updating chart at interval {n}")
+    # print(f"Consumed Data Length: {len(consumed_data)}")
 
     # 3. Safely copy the current consumed data using a lock
     with data_lock:
@@ -432,6 +438,8 @@ def toggle_pause(n_clicks, pause_data):
 
 # =========================== RUN APP & THREADS ======================= #
 
+print(f"Serving Flask app '{current_file}'! 🚀")
+
 if __name__ == "__main__":
     
     # Start Kafka producer thread (daemon so it ends when main thread ends)
@@ -444,8 +452,8 @@ if __name__ == "__main__":
 
     # Run Dash app on all interfaces and appropriate port (for Heroku)
     port = int(os.environ.get('PORT', 8050))
-    app.run_server(host='0.0.0.0', port=port, debug=True)
-    # app.run_server(host='0.0.0.0', port=port, debug=False)
+    # app.run_server(host='0.0.0.0', port=port, debug=True)
+    app.run_server(host='0.0.0.0', port=port, debug=False)
 
 # -------------------------------------------- KILL PORT ---------------------------------------------------
 
