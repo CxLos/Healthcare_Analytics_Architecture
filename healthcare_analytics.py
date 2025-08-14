@@ -57,21 +57,21 @@ producer_conf = {
 producer = Producer(producer_conf)
 
 # callback function to be called after message delivery attempt
-def delivery_report(err, msg):
-    if err is not None:
-        # If there's an error delivering the message, print an error message
-        print(f"❌ Delivery failed: {err}")
-    else:
-        # Otherwise, print success with topic, partition, and offset info
-        print(f"✅ Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
+# def delivery_report(err, msg):
+#     if err is not None:
+#         # If there's an error delivering the message, print an error message
+#         print(f"❌ Delivery failed: {err}")
+#     else:
+#         # Otherwise, print success with topic, partition, and offset info
+#         print(f"✅ Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
 
-# single test message to verify connection
-try:
-    test_message = '{"test": "connectivity"}'                  # JSON string to test connectivity
-    producer.produce(KAFKA_TOPIC, value=test_message, callback=delivery_report)  # Send test message
-    producer.flush()                                           # Wait for all messages to be delivered
-except Exception as e:
-    print(f"🔥 Connection error: {e}")                         # Print connection error if it fails
+# # single test message to verify connection
+# try:
+#     test_message = '{"test": "connectivity"}'                  # JSON string to test connectivity
+#     producer.produce(KAFKA_TOPIC, value=test_message, callback=delivery_report)  # Send test message
+#     producer.flush()                                           # Wait for all messages to be delivered
+# except Exception as e:
+#     print(f"🔥 Connection error: {e}")                         # Print connection error if it fails
 
 # function to produce random patient check-in messages continuously
 def kafka_producer():
@@ -85,8 +85,8 @@ def kafka_producer():
             # Serialize the message to JSON and produce it to Kafka with a delivery callback
             producer.produce(
                 topic=KAFKA_TOPIC,
-                value=json.dumps(message),
-                callback=delivery_report
+                value=json.dumps(message), # populate message
+                # callback=delivery_report
             )
             producer.poll(0)                                   # Serve delivery callbacks (non-blocking)
             print(f"Produced: {message}")                      # Print the produced message to console
@@ -114,7 +114,7 @@ consumer_conf = {
 consumed_data = []
 consumer_started = False
 
-# ------------------ Seed initial data for faster graph ------------------ #
+# Seed initial data
 with data_lock:
     for _ in range(30):  # add 5 dummy check-ins
         consumed_data.append({
@@ -123,7 +123,7 @@ with data_lock:
             "department": random.choice(DEPARTMENTS)
         })
 
-# Single correct consumer function for confluent-kafka
+# Consumer Function
 def kafka_consumer():
     print(f"🟢 Kafka consumer started at {datetime.now()}")
     consumer = Consumer(consumer_conf)
@@ -203,38 +203,40 @@ app.layout = html.Div(
 
     #------------- Kafka ----------- # 
     
-html.Div(
-    className="kafka-row",
-    children=[
-        html.H1(
-            "Dashboard Live-Stream",
-            className="kafka-title"
-        ),
-        html.Div([
-            html.Button("🔄", id="reset-button", n_clicks=0)
-        ]),
-        dcc.Store(id="department-store", data=DEPARTMENTS),
-        dcc.Store(id="consumer-trigger"),  # ⬅️ Added here
-        dcc.Graph(
-            className="line-graph",
-            id='live-bar-chart',
-            style={"marginTop": "0px"}
-        ),
-        html.Div(
-            className="interval",
-            children=[
-                dcc.Interval(
-                    id='interval-component',
-                    interval=3 * 1000,  # every 3 seconds
-                    n_intervals=0
-                )
-            ]
-        )
-    ]
-),
-
+    html.Div(
+        className="kafka-row",
+        children=[
+            html.H1(
+                "Dashboard Live-Stream",
+                className="kafka-title"
+            ),
+            html.Div(
+                className='stream-buttons',
+                children=[
+                    html.Button("⏯️", id="pause-button", n_clicks=0, title="Play / Pause"),
+                    html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Chart"),
+                dcc.Store(id="pause-store", data={"paused": False})
+            ]),
+            dcc.Store(id="department-store", data=DEPARTMENTS),
+            dcc.Store(id="consumer-trigger"),  # ⬅️ Added here
+            dcc.Graph(
+                className="line-graph",
+                id='live-line-chart',
+                style={"marginTop": "0px"}
+            ),
+            html.Div(
+                className="interval",
+                children=[
+                    dcc.Interval(
+                        id='interval-component',
+                        interval=1 * 1000,  # every 3 seconds
+                        n_intervals=0
+                    )
+                ]
+            )
+        ]
+    ),
 ]),
-    
 
 #------------- README ----------- # 
 
@@ -309,35 +311,54 @@ html.Div(
     )
 ])
 
+# ------------------- DASH CALLBACK: Trigger Consumer ------------------- #
+
 @app.callback(
-    Output("consumer-trigger", "data"), 
-    Input("interval-component", "n_intervals"))
+    Output("consumer-trigger", "data"),
+    Input("interval-component", "n_intervals")
+)
+
 def trigger_consumer(n):
+    # 1. Start the consumer thread (if not already running)
     start_consumer()
+    
+    # 2. Return status so Dash knows consumer is active
     return {"status": "started"}
 
-# Update chart
+# ------------------- DASH CALLBACK: Update Chart ------------------ #
 @app.callback(
-    Output('live-bar-chart', 'figure'),
+    Output('live-line-chart', 'figure'),
     Input('interval-component', 'n_intervals'),
-    State('department-store', 'data')
+    State('department-store', 'data'),
+    State('pause-store', 'data')  # <-- track paused state
 )
-def update_graph_live(n, departments):
+def update_graph_live(n, departments, pause_data):
+    # 1. Check if chart is paused
+    if pause_data.get("paused"):
+        return dash.no_update  # Do not update chart while paused
+
+    # 2. Print the current interval and the number of consumed records
     print(f"Updating chart at interval {n}")
     print(f"Consumed Data Length: {len(consumed_data)}")
-    
+
+    # 3. Safely copy the current consumed data using a lock
     with data_lock:
         data_snapshot = list(consumed_data)
 
+    # 4. Initialize dictionary to count check-ins for each department
     current_counts = {dept: 0 for dept in departments}
+
+    # 5. Count check-ins per department
     for record in data_snapshot:
         dept = record.get('department')
         if dept in current_counts:
             current_counts[dept] += 1
 
+    # 6. Append counts to history for plotting
     for dept in departments:
         counts_history[dept].append(current_counts.get(dept, 0))
 
+    # 7. Create Scatter objects for each department
     data = [
         go.Scatter(
             x=list(range(len(counts_history[dept]))),
@@ -349,6 +370,7 @@ def update_graph_live(n, departments):
         for dept in departments
     ]
 
+    # 8. Create the figure and update layout
     fig = go.Figure(data=data)
     fig.update_layout(
         height=700,
@@ -360,20 +382,44 @@ def update_graph_live(n, departments):
             range=[0, max(max(counts) for counts in counts_history.values()) + 1]
         )
     )
+
+    # 9. Return updated figure
     return fig
 
-# Reset chart
+
+# ------------------- DASH CALLBACK: Reset Chart ------------------ #
 @app.callback(
     Output("interval-component", "n_intervals"),
     Input("reset-button", "n_clicks"),
     prevent_initial_call=True
 )
 def reset_chart(n_clicks):
+    # 1. Clear consumed data safely
     with data_lock:
         consumed_data.clear()
+
+    # 2. Clear historical counts
     for dept in counts_history:
         counts_history[dept].clear()
+
+    # 3. Reset interval counter
     return 0
+
+
+# ------------------- DASH CALLBACK: Pause/Resume Chart ------------------ #
+@app.callback(
+    Output("pause-store", "data"),  # track pause state
+    Input("pause-button", "n_clicks"),
+    State("pause-store", "data"),
+    prevent_initial_call=True
+)
+def toggle_pause(n_clicks, pause_data):
+    # 1. Flip paused state each time button is clicked
+    paused = not pause_data.get("paused", False)
+
+    # 2. Return updated state
+    return {"paused": paused}
+
 
 # =========================== RUN APP & THREADS ======================= #
 
