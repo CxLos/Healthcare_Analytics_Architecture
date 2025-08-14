@@ -127,7 +127,7 @@ def kafka_producer():
             print(f"[Producer Error] {e}")
 
         # 3. Sleep a short time before next message
-        time.sleep(0.5)                                       # Wait .5 seconds before producing next message
+        time.sleep(2)                                       # Wait .5 seconds before producing next message
 
 
 # ============================ CONSUMER =============================== #
@@ -180,9 +180,9 @@ def kafka_consumer():
                 continue
 
             # Poll Kafka for new messages
-            msg = consumer.poll(0.3)
+            msg = consumer.poll(2)
             if msg is None:
-                time.sleep(0.1)
+                time.sleep(0.5)
                 continue
 
             if msg.error():
@@ -292,7 +292,7 @@ app.layout = html.Div(
                 children=[
                     dcc.Interval(
                         id='interval-component',
-                        interval=3 * 1000,  # every 3 seconds
+                        interval=2 * 1000,  # every 3 seconds
                         n_intervals=0
                     )
                 ]
@@ -394,6 +394,9 @@ def trigger_consumer(n):
 
 # Keep track of historical counts per department
 counts_history = {dept: [] for dept in DEPARTMENTS}
+# Keep track of how many messages we’ve already processed
+last_index = 0  
+
 
 @app.callback(
     Output('live-line-chart', 'figure'),
@@ -401,63 +404,62 @@ counts_history = {dept: [] for dept in DEPARTMENTS}
     State('department-store', 'data'),
     State('pause-store', 'data')  # <-- track paused state
 )
+
+
 def update_graph_live(n, departments, pause_data):
-    # 1. Check if chart is paused
     if pause_data.get("paused"):
-        return dash.no_update  # Do not update chart while paused
+        return dash.no_update
 
-    # # 2. Print the current interval and the number of consumed records
-    # print(f"Updating chart at interval {n}")
-    # print(f"Consumed Data Length: {len(consumed_data)}")
-
-    # 3. Safely copy the current consumed data using a lock
     with data_lock:
         data_snapshot = list(consumed_data)
 
-    # 4. Initialize dictionary to count check-ins for each department
+    # Initialize dict to hold current interval count
     current_counts = {dept: 0 for dept in departments}
 
-    # 5. Count check-ins per department
     for record in data_snapshot:
-        dept = record.get('department')
+        dept = record.get("department")
         if dept in current_counts:
             current_counts[dept] += 1
 
-    # 6. Append counts to history for plotting
     for dept in departments:
-        counts_history[dept].append(current_counts.get(dept, 0))
+        last_value = counts_history[dept][-1] if counts_history[dept] else 0
 
-    # 7. Create Scatter objects for each department
+        # mall positive, zero (flatline), or slight negative
+        change = random.choices(
+            population=[-2, -1, 0, 1, 2],
+            weights=[0.1, 0.2, 0.5, 0.3, 0.2],
+            k=1
+        )[0]
+
+        # Apply change to last value, cap at 0 minimum
+        new_value = max(0, last_value + change)
+        counts_history[dept].append(new_value)
+
+    # Build the figure
     data = [
         go.Scatter(
             x=list(range(len(counts_history[dept]))),
             y=counts_history[dept],
             mode='lines+markers',
             name=dept,
-            hovertemplate=f"<b>Department: </b>{dept}</br><b>Count: </b>%{{y}}<br><b>Time Interval: </b>%{{x}}<extra></extra>"
+            hovertemplate=f"<b>Department:</b> {dept}<br>"
+                f"<b>Check-ins:</b> %{{y}}<br>"
+                f"<b>Time Interval:</b> %{{x}}<extra></extra>"
         )
+        
         for dept in departments
     ]
 
-    # 8. Create the figure and update layout
     fig = go.Figure(data=data)
     fig.update_layout(
-        height=680,
-        title=dict(
-            text="Patient Check-ins by Department", 
-            y=0.94, 
-            x=0.5),
-        xaxis=dict(
-            title="Time Interval", 
-            title_standoff=30),
-        yaxis=dict(
-            title="Number of Check-ins",
-            title_standoff=30,
-            range=[0, max(max(counts) for counts in counts_history.values()) + 1]
-        )
+        height=700,
+        title=dict(text="Patient Check-ins by Department", y=0.94, x=0.5),
+        xaxis_title="Time Interval",
+        yaxis_title="Number of Check-ins",
+        yaxis=dict(range=[0, 50]),
     )
+    fig.update_yaxes(autorange=True)
 
-    # 9. Return updated figure
     return fig
 
 
