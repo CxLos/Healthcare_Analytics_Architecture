@@ -506,6 +506,7 @@ def update_stream_status(pause_data):
         return "Paused", {**base_style, "background-color": "red"}
     else:
         return "Live", {**base_style, "background-color": "mediumseagreen"}
+    
 
 # =========================== RUN APP & THREADS ======================= #
 
