@@ -261,10 +261,19 @@ app.layout = html.Div(
                     html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Stream"),
                     dcc.Store(id="pause-store", data={"paused": False}),
             ]),
-            html.Div(
+
+        ]
+    ),
+    html.Div(
+        className="stream-row",
+        children=[
+                        html.Div(
                 id="stream-status", 
                 className="stream-status-text"), 
-            dcc.Store(id="department-store", data=DEPARTMENTS),
+            html.Div(
+                className="interval",
+                children=[
+             dcc.Store(id="department-store", data=DEPARTMENTS),
             dcc.Store(id="consumer-trigger"),  # ⬅️ Added here
             dcc.Graph(
                 className="line-graph",
@@ -279,6 +288,8 @@ app.layout = html.Div(
                         interval=2 * 1000,  # every 3 seconds
                         n_intervals=0
                     )
+                ]
+            )
                 ]
             )
         ]
@@ -492,10 +503,13 @@ def toggle_pause(n_clicks, pause_data):
 def update_stream_status(pause_data):
     base_style = {
         "color": "white",
-        "margin": "10px 0px 0px 0px",
-        "padding": "10px 10px 10px 10px",
-        "border": "2px solid black",
-        "border-radius": "100px",
+        "margin": "0px 0px 0px 0px",
+        "padding": "1px 30px 1px 30px",
+        "border-right": "2px solid black",
+        "border-left": "2px solid black",
+        "border-bottom": "2px solid black",
+        "border-color": "rgb(186, 186, 186)",
+        "border-radius": "0px",
         "text-align": "center",
         "font-family": 'Calibri',
         "font-size": '20px',

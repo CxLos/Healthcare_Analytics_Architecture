@@ -82,7 +82,7 @@
   /* flex-grow: 1; */
 
   margin: 0px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
+  padding: 10px 0px 0px 0px;
   width: 98%;
   /* height: 100vh; */
 
@@ -104,7 +104,7 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  margin: -20px 0px 0px 0px;
+  margin: -20px 0px 10px 0px;
   padding: 0px 0px 0px 0px;
 }
 
@@ -179,6 +179,25 @@
   padding: 0px 0px 0px 0px;
   width: 95%;
   height: 100%;
+}
+
+/* =========== Stream Row =============== */
+
+.stream-row {
+    display:flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px; /* Controls spacing between children */
+  /* flex-grow: 1; */
+
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 98%;
+  /* height: 100vh; */
+
+  text-align: center;
+  border-bottom: 2px solid rgb(186, 186, 186);
 }
 
 /* =========== README =============== */
