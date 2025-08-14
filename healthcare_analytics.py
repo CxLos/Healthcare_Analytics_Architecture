@@ -48,6 +48,15 @@ DEPARTMENTS = [
 consumed_data = deque(maxlen=100)
 data_lock = threading.Lock() 
 
+# ============================ Globals =============================== #
+
+# Thread-safe data store
+consumed_data = []
+consumer_started = False
+consumer_running = False 
+paused = False 
+last_pause_state = None 
+
 # ============================ PRODUCER =============================== #
 
 # Kafka producer configuration dictionary with connection and authentication details
@@ -81,25 +90,44 @@ producer = Producer(producer_conf)
 
 # function to produce random patient check-in messages continuously
 def kafka_producer():
-    while True:                                                # Infinite loop
+    
+    global paused, last_pause_state
+    
+    while True:  # Infinite loop
+        
+        # 0. Check if producer should be paused
+        if paused:
+            if last_pause_state != paused:
+                # print("⏸️ Kafka Producer paused")
+                last_pause_state = paused
+            time.sleep(0.5)
+            continue
+        else:
+            if last_pause_state != paused:
+                # print("▶️ Kafka Producer playing")
+                last_pause_state = paused
+
+        # 1. Create a random patient check-in message
         message = {
-            "patient_id": random.randint(1000, 9999),         # Random patient ID between 1000 and 9999
-            "check_in_time": time.strftime('%Y-%m-%d %H:%M:%S'), # Current date and time string
-            "department": random.choice(DEPARTMENTS)          # Randomly pick a department
+            "patient_id": random.randint(1000, 9999),
+            "check_in_time": time.strftime('%Y-%m-%d %H:%M:%S'),
+            "department": random.choice(DEPARTMENTS)
         }
-        try: 
-            # Serialize the message to JSON and produce it to Kafka with a delivery callback
+
+        try:
+            # 2. Serialize message to JSON and produce it to Kafka
             producer.produce(
                 topic=KAFKA_TOPIC,
-                value=json.dumps(message), # populate message
-                # callback=delivery_report
+                value=json.dumps(message)
             )
-            producer.poll(0)                                   # Serve delivery callbacks (non-blocking)
-            # print(f"Produced: {message}")                      # Print the produced message to console
-        except Exception as e:
-            print(f"[Producer Error] {e}")                     # Print error if produce fails
+            producer.poll(0)  # Serve delivery callbacks (non-blocking)
+            # print(f"Produced: {message}")  # Optional logging
 
-        time.sleep(0.5)                                          # Wait 2 seconds before producing next message
+        except Exception as e:
+            print(f"[Producer Error] {e}")
+
+        # 3. Sleep a short time before next message
+        time.sleep(0.5)                                       # Wait .5 seconds before producing next message
 
 
 # ============================ CONSUMER =============================== #
@@ -116,10 +144,6 @@ consumer_conf = {
     'enable.auto.commit': True
 }
 
-# Thread-safe data store
-consumed_data = []
-consumer_started = False
-
 # Seed initial data
 with data_lock:
     for _ in range(30):  # add 5 dummy check-ins
@@ -131,27 +155,43 @@ with data_lock:
 
 # Consumer Function
 def kafka_consumer():
+    global consumer_running, paused, last_pause_state
+
     # print(f"🟢 Kafka consumer started at {datetime.now()}")
     consumer = Consumer(consumer_conf)
     consumer.subscribe([KAFKA_TOPIC])
-    time.sleep(2)  # Allow partition assignment
+    time.sleep(2)  # allow partition assignment
 
+    consumer_running = True
     try:
-        while True:
-            msg = consumer.poll(0.5)  # Wait up to 1 second
+        while consumer_running:  # main loop controlled by flag
+            
+            # 1. Print state if it changed
+            # if paused != last_pause_state:
+            #     if paused:
+            #         print("⏸️ Consumer paused")
+            #     else:
+            #         print("▶️ Consumer playing")
+            #     last_pause_state = paused
+            
+            if paused:
+                # If paused, skip polling, just wait
+                time.sleep(0.5)
+                continue
+
+            # Poll Kafka for new messages
+            msg = consumer.poll(0.3)
             if msg is None:
                 time.sleep(0.1)
                 continue
 
             if msg.error():
-                # print(f"❌ Consumer error: {msg.error()}")
                 continue
 
             try:
                 parsed = json.loads(msg.value().decode('utf-8'))
                 with data_lock:
                     consumed_data.append(parsed)
-                # print(f"✅ Received message: {parsed}")
             except Exception as e:
                 print(f"⚠️ Error parsing message: {e}")
 
@@ -159,6 +199,7 @@ def kafka_consumer():
         print(f"🔥 Consumer connection error: {e}")
     finally:
         consumer.close()
+        # print("🛑 Kafka consumer stopped")
 
 # Thread starter for consumer
 def start_consumer():
@@ -344,7 +385,7 @@ def update_graph_live(n, departments, pause_data):
     if pause_data.get("paused"):
         return dash.no_update  # Do not update chart while paused
 
-    # 2. Print the current interval and the number of consumed records
+    # # 2. Print the current interval and the number of consumed records
     # print(f"Updating chart at interval {n}")
     # print(f"Consumed Data Length: {len(consumed_data)}")
 
@@ -417,6 +458,7 @@ def reset_chart(n_clicks):
         counts_history[dept].clear()
 
     # 3. Reset interval counter
+    # print("🔁Dashboard cleared")
     return 0
 
 
@@ -428,6 +470,8 @@ def reset_chart(n_clicks):
     prevent_initial_call=True # 
 )
 def toggle_pause(n_clicks, pause_data):
+    
+    global paused
     
     # 1. Flip paused state each time button is clicked
     paused = not pause_data.get("paused", False)
@@ -452,8 +496,8 @@ if __name__ == "__main__":
 
     # Run Dash app on all interfaces and appropriate port (for Heroku)
     port = int(os.environ.get('PORT', 8050))
-    # app.run_server(host='0.0.0.0', port=port, debug=True)
-    app.run_server(host='0.0.0.0', port=port, debug=False)
+    app.run_server(host='0.0.0.0', port=port, debug=True)
+    # app.run_server(host='0.0.0.0', port=port, debug=False)
 
 # -------------------------------------------- KILL PORT ---------------------------------------------------
 
