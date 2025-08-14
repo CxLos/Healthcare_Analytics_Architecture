@@ -140,7 +140,7 @@ consumer_conf = {
     'sasl.username': KAFKA_API_KEY,
     'sasl.password': KAFKA_API_SECRET,
     'group.id': 'dashboard-consumer',
-    'auto.offset.reset': 'earliest',
+    'auto.offset.reset': 'latest',
     'enable.auto.commit': True
 }
 
