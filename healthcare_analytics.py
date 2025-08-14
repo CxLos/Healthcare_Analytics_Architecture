@@ -169,9 +169,6 @@ def start_consumer():
 app = dash.Dash(__name__)
 server = app.server
 
-# Keep track of historical counts per department
-counts_history = {dept: [] for dept in DEPARTMENTS}
-
 app.layout = html.Div(
     
     className='',
@@ -213,7 +210,7 @@ app.layout = html.Div(
             html.Div(
                 className='stream-buttons',
                 children=[
-                    html.Button("⏯️", id="pause-button", n_clicks=0, title="Play / Pause"),
+                    html.Button("⏯️", id="pause-button", n_clicks=0, title="Play / Pause Chart"),
                     html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Chart"),
                 dcc.Store(id="pause-store", data={"paused": False})
             ]),
@@ -229,7 +226,7 @@ app.layout = html.Div(
                 children=[
                     dcc.Interval(
                         id='interval-component',
-                        interval=1 * 1000,  # every 3 seconds
+                        interval=2 * 1000,  # every 3 seconds
                         n_intervals=0
                     )
                 ]
@@ -326,6 +323,10 @@ def trigger_consumer(n):
     return {"status": "started"}
 
 # ------------------- DASH CALLBACK: Update Chart ------------------ #
+
+# Keep track of historical counts per department
+counts_history = {dept: [] for dept in DEPARTMENTS}
+
 @app.callback(
     Output('live-line-chart', 'figure'),
     Input('interval-component', 'n_intervals'),
@@ -365,7 +366,7 @@ def update_graph_live(n, departments, pause_data):
             y=counts_history[dept],
             mode='lines+markers',
             name=dept,
-            hovertemplate=f"{dept}: <b>%{{y}}</b><extra></extra>"
+            hovertemplate=f"<b>Department: </b>{dept}</br><b>Count: </b>%{{y}}<br><b>Time Interval: </b>%{{x}}<extra></extra>"
         )
         for dept in departments
     ]
@@ -374,8 +375,13 @@ def update_graph_live(n, departments, pause_data):
     fig = go.Figure(data=data)
     fig.update_layout(
         height=700,
-        title=dict(text="Patient Check-ins by Department", y=0.94, x=0.5),
-        xaxis=dict(title="Time Interval", title_standoff=30),
+        title=dict(
+            text="Patient Check-ins by Department", 
+            y=0.94, 
+            x=0.5),
+        xaxis=dict(
+            title="Time Interval", 
+            title_standoff=30),
         yaxis=dict(
             title="Number of Check-ins",
             title_standoff=30,
@@ -388,11 +394,13 @@ def update_graph_live(n, departments, pause_data):
 
 
 # ------------------- DASH CALLBACK: Reset Chart ------------------ #
+
 @app.callback(
     Output("interval-component", "n_intervals"),
     Input("reset-button", "n_clicks"),
     prevent_initial_call=True
 )
+
 def reset_chart(n_clicks):
     # 1. Clear consumed data safely
     with data_lock:
@@ -411,9 +419,10 @@ def reset_chart(n_clicks):
     Output("pause-store", "data"),  # track pause state
     Input("pause-button", "n_clicks"),
     State("pause-store", "data"),
-    prevent_initial_call=True
+    prevent_initial_call=True # 
 )
 def toggle_pause(n_clicks, pause_data):
+    
     # 1. Flip paused state each time button is clicked
     paused = not pause_data.get("paused", False)
 
