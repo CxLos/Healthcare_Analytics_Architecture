@@ -259,8 +259,11 @@ app.layout = html.Div(
                 children=[
                     html.Button("⏯️", id="pause-button", n_clicks=0, title="Resume / Pause Stream"),
                     html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Stream"),
-                dcc.Store(id="pause-store", data={"paused": False})
+                    dcc.Store(id="pause-store", data={"paused": False}),
             ]),
+            html.Div(
+                id="stream-status", 
+                className="stream-status-text"), 
             dcc.Store(id="department-store", data=DEPARTMENTS),
             dcc.Store(id="consumer-trigger"),  # ⬅️ Added here
             dcc.Graph(
@@ -421,7 +424,7 @@ def update_graph_live(n, departments, pause_data):
     # 8. Create the figure and update layout
     fig = go.Figure(data=data)
     fig.update_layout(
-        height=700,
+        height=680,
         title=dict(
             text="Patient Check-ins by Department", 
             y=0.94, 
@@ -479,6 +482,30 @@ def toggle_pause(n_clicks, pause_data):
     # 2. Return updated state
     return {"paused": paused}
 
+# =========================== Status Text ======================= #
+
+@app.callback(
+    Output("stream-status", "children"),
+    Output("stream-status", "style"),
+    Input("pause-store", "data")
+)
+def update_stream_status(pause_data):
+    base_style = {
+        "color": "white",
+        "margin": "10px 0px 0px 0px",
+        "padding": "10px 10px 10px 10px",
+        "border": "2px solid black",
+        "border-radius": "100px",
+        "text-align": "center",
+        "font-family": 'Calibri',
+        "font-size": '20px',
+        "font-weight": "bold"
+    }
+    
+    if pause_data.get("paused", False):
+        return "Paused", {**base_style, "background-color": "red"}
+    else:
+        return "Live", {**base_style, "background-color": "mediumseagreen"}
 
 # =========================== RUN APP & THREADS ======================= #
 
