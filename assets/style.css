@@ -184,7 +184,7 @@
 /* =========== Stream Row =============== */
 
 .stream-row {
-    display:flex;
+  display:flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -195,9 +195,15 @@
   padding: 0px 0px 0px 0px;
   width: 98%;
   /* height: 100vh; */
+  border-bottom: 2px solid rgb(186, 186, 186);
 
+}
+
+.stream-status-text {
   text-align: center;
   border-bottom: 2px solid rgb(186, 186, 186);
+  border-right: 2px solid rgb(186, 186, 186);
+  border-left: 2px solid rgb(186, 186, 186); 
 }
 
 /* =========== README =============== */

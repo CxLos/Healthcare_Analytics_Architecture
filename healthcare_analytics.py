@@ -267,9 +267,16 @@ app.layout = html.Div(
     html.Div(
         className="stream-row",
         children=[
-                        html.Div(
-                id="stream-status", 
-                className="stream-status-text"), 
+            html.Div(
+                className='',
+                children=[
+                    html.Div(
+                        id="stream-status", 
+                        className="stream-status-text"
+                    ), 
+                ]
+            ),
+
             html.Div(
                 className="interval",
                 children=[
@@ -285,7 +292,7 @@ app.layout = html.Div(
                 children=[
                     dcc.Interval(
                         id='interval-component',
-                        interval=2 * 1000,  # every 3 seconds
+                        interval=3 * 1000,  # every 3 seconds
                         n_intervals=0
                     )
                 ]
@@ -502,9 +509,13 @@ def toggle_pause(n_clicks, pause_data):
 )
 def update_stream_status(pause_data):
     base_style = {
+        "display": "flex",
+        "justify-content": "center",
+        "align-items": "center",
         "color": "white",
         "margin": "0px 0px 0px 0px",
-        "padding": "1px 30px 1px 30px",
+        "padding-top": "1px",
+        "padding-bottom": "1px",
         "border-right": "2px solid black",
         "border-left": "2px solid black",
         "border-bottom": "2px solid black",
@@ -513,7 +524,8 @@ def update_stream_status(pause_data):
         "text-align": "center",
         "font-family": 'Calibri',
         "font-size": '20px',
-        "font-weight": "bold"
+        "font-weight": "bold",
+        "width":"10vw",
     }
     
     if pause_data.get("paused", False):
