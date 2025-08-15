@@ -245,7 +245,7 @@ consumer_conf = {
 
 # Consumer Function
 def kafka_consumer():
-    global consumer_running, paused, last_pause_state
+    global consumer_running, paused, last_pause_state, consumed_data
 
     print(f"🟢 Kafka consumer started at {datetime.now()}")
     consumer = Consumer(consumer_conf)
@@ -668,6 +668,8 @@ def update_graph_live(n, view_mode, departments, pause_data):
 )
 def get_live_table_figure(n, trigger_data, departments, pause_data):
     
+    # global consumed_data
+
     print(f"Updating chart at interval {n}")
     print(f"Consumed Data Length: {len(consumed_data)}")
 
@@ -678,21 +680,7 @@ def get_live_table_figure(n, trigger_data, departments, pause_data):
     with data_lock:
         snapshot = list(consumed_data)
 
-    # If no live data, seed placeholder rows
-    if not snapshot:
-        snapshot = []
-        for dept in departments:
-            # Generate one dummy row per department
-            snapshot.append({
-                "patient_id": random.randint(1000, 9999),
-                "check_in_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                "department": dept,
-                "complaint": random.choice(COMPLAINTS[dept]),
-                "sex": random.choice(["Male", "Female"]),
-                "age": random.randint(1, 99),
-            })
-
-    # Build DataFrame
+    # Build DataFrame from real consumed data only
     df_live = pd.DataFrame(snapshot)
 
     # Sort by check-in time descending
@@ -841,21 +829,26 @@ def update_stream_status(pause_data):
     else:
         return "Live", {**base_style, "background-color": "mediumseagreen"}
 
-# =========================== RUN APP & THREADS ======================= #
+# ================= Initiate Kafka Threads ================== #
 
-print(f"Serving Flask app '{current_file}'! 🚀")
-
-if __name__ == "__main__":
-    
-    # Start Kafka producer thread (daemon so it ends when main thread ends)
+def start_threads():
     producer_thread = threading.Thread(target=kafka_producer, daemon=True)
     producer_thread.start()
 
-    # Start Kafka consumer thread
     consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
     consumer_thread.start()
 
-    # Run Dash app on all interfaces and appropriate port (for Heroku)
+if os.environ.get("DYNO"):  # Running on Heroku
+    start_threads()
+    
+# =========================== RUN APP & THREADS ======================= #
+
+# print(f"Serving Flask app '{current_file}'! 🚀")
+
+if __name__ == "__main__":
+    
+    print(f"Serving Flask app '{current_file}'! 🚀")
+    start_threads() 
     port = int(os.environ.get('PORT', 8050))
     app.run_server(host='0.0.0.0', port=port, debug=True)
     # app.run_server(host='0.0.0.0', port=port, debug=False)
