@@ -196,7 +196,6 @@
   width: 98%;
   /* height: 100vh; */
   border-bottom: 2px solid rgb(186, 186, 186);
-
 }
 
 .stream-status-text {
@@ -204,6 +203,100 @@
   border-bottom: 2px solid rgb(186, 186, 186);
   border-right: 2px solid rgb(186, 186, 186);
   border-left: 2px solid rgb(186, 186, 186); 
+}
+
+#view-mode-toggle{
+  display: inline-block;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  font-size: 15px;
+
+  margin: 0px 20px 0px 0px;
+  padding: 0px 20px 0px 0px;
+}
+
+/* =========== AI Box =============== */
+
+.data-row {
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  /* gap: 5px; Controls spacing between children */
+  /* flex-grow: 1; */
+
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 98%;
+  /* height: 100vh; */
+  border-bottom: 2px solid rgb(186, 186, 186);
+}
+
+.ai-box {
+  display:flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 50%;
+  height: auto;
+  /* border-right: 2px solid rgb(186, 186, 186); */
+}
+
+.ai-title {
+  font-size: 25px;
+  color: rgb(38, 38, 38);
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  margin: 0px 0px 10px 0px;
+  padding: 0px 0px 0px 0px;
+}
+
+.gpt-response {
+  margin: 0px 0px 0px 0px;
+  padding: 20px 20px 20px 20px;
+  width: 90%;
+  height: auto; /* Allow height to adjust based on content */
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  font-size: 20px;
+  /* border-right: 2px solid rgb(186, 186, 186); */
+}
+
+/* =========== Data Box =============== */
+
+.data-box {
+  display:flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 0px;
+  width: 50%;
+  height: 100%;
+  border-left: 2px solid rgb(186, 186, 186);
+}
+
+.data-title {
+  font-size: 25px;
+  color: rgb(38, 38, 38);
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  margin: 0px 0px 10px 0px;
+  padding: 20px 0px 0px 0px;
+}
+
+.check-in-table {
+  margin: 0px 0px 0px 0px; /* Adjust the margin as needed */
+  padding: 15px 0px 0px 0px; /* Adjust the padding as needed */
+  width: 90%;
+  /* height: ; */
+  overflow-x: auto; /* Enable horizontal scrolling */
+  white-space: nowrap; /* Prevent line breaks */
+}
+
+.scrollable-container {
+  overflow-x: auto; /* Enable horizontal scrolling */
+  white-space: nowrap; /* Prevent line breaks */
 }
 
 /* =========== README =============== */
@@ -248,34 +341,6 @@ pre {
 
 /* ================== Data Table ================ */
 
-.data-section {
-  display:flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  /* flex-grow: 1; */
-
-  margin: 0px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
-  /* width: 98%; */
-}
-
-.data-row {
-  display:flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  /* flex-grow: 1; */
-
-  margin: 0px 0px 0px 0px;
-  padding: 0px 0px 0px 0px;
-  width: 98%;
-
-  text-align: center;
-  border-top: 2px solid rgb(186, 186, 186);
-  border-bottom: 2px solid rgb(186, 186, 186);
-}
-
 .table-title {
   font-size: 35px;
   color: rgb(38, 38, 38);
@@ -284,7 +349,7 @@ pre {
   padding: 20px 0px 0px 0px;
 }
 
-.data-table {
+.check-in-table {
   display:flex;
   flex-direction: column;
   justify-content: center;
