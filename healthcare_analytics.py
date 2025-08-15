@@ -827,20 +827,22 @@ def update_stream_status(pause_data):
     else:
         return "Live", {**base_style, "background-color": "mediumseagreen"}
 
+# ================= Initiate Kafka Threads ================== #
+
+# Start Kafka producer thread (daemon so it ends when main thread ends)
+producer_thread = threading.Thread(target=kafka_producer, daemon=True)
+producer_thread.start()
+
+# Start Kafka consumer thread
+consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
+consumer_thread.start()
+
 # =========================== RUN APP & THREADS ======================= #
 
 print(f"Serving Flask app '{current_file}'! 🚀")
 
 if __name__ == "__main__":
-    
-    # Start Kafka producer thread (daemon so it ends when main thread ends)
-    producer_thread = threading.Thread(target=kafka_producer, daemon=True)
-    producer_thread.start()
-
-    # Start Kafka consumer thread
-    consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
-    consumer_thread.start()
-
+    print(f"Serving Flask app '{current_file}'! 🚀")
     # Run Dash app on all interfaces and appropriate port (for Heroku)
     port = int(os.environ.get('PORT', 8050))
     app.run_server(host='0.0.0.0', port=port, debug=True)
