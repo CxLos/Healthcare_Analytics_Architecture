@@ -667,7 +667,7 @@ def update_graph_live(n, view_mode, departments, pause_data):
     State('pause-store', 'data')
 )
 def get_live_table_figure(n, trigger_data, departments, pause_data):
-    
+
     print(f"Updating chart at interval {n}")
     print(f"Consumed Data Length: {len(consumed_data)}")
 
@@ -678,21 +678,7 @@ def get_live_table_figure(n, trigger_data, departments, pause_data):
     with data_lock:
         snapshot = list(consumed_data)
 
-    # If no live data, seed placeholder rows
-    # if not snapshot:
-    #     snapshot = []
-    #     for dept in departments:
-    #         # Generate one dummy row per department
-    #         snapshot.append({
-    #             "patient_id": random.randint(1000, 9999),
-    #             "check_in_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-    #             "department": dept,
-    #             "complaint": random.choice(COMPLAINTS[dept]),
-    #             "sex": random.choice(["Male", "Female"]),
-    #             "age": random.randint(1, 99),
-    #         })
-
-    # Build DataFrame
+    # Build DataFrame from real consumed data only
     df_live = pd.DataFrame(snapshot)
 
     # Sort by check-in time descending
