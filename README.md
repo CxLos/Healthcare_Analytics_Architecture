@@ -46,7 +46,7 @@ To run this project locally, follow these steps:
 - Or access the live version here:  
   🌐 [Streaming Patient Check-In Dashboard](https://patient-check-in-stream-c57db50559ba.herokuapp.com/)
 
-![Preview](./screenshots/224524.png)
+![Preview](./screenshots/225424.png)
 
 ## 🧪 Methodology
 
