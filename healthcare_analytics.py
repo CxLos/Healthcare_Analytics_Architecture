@@ -336,45 +336,41 @@ def summarize_checkins(df_live):
 app = dash.Dash(__name__)
 server = app.server
 
-app.layout = html.Div(
-    
-    className='',
-    children=[
-    
+app.layout = html.Div([
+
     #------------- Header ----------- # 
-    
     html.Div(
-        className='div',
+        className='divv',
         children=[
             html.Div(
-                className='divv',
+                className='header-content',
                 children=[
-                    html.H1(
-                        'Real-Time Healthcare Data Pipeline', 
-                        className='title'),
-                    html.H1(
-                        'With Apache Kafka',
-                        className='title2'),
+                    html.H1('Real-Time Healthcare Data Pipeline', className='title'),
+                    html.H1('With Apache Kafka', className='title2'),
                     html.Div(
-                        className='btn-box', 
+                        className='btn-box',
                         children=[
-                        html.A(
-                            'Repo', 
-                            href='https://github.com/CxLos/Healthcare_Analytics_Architecture', 
-                            className='repo-btn')
+                            html.A(
+                                'Repo',
+                                href='https://github.com/CxLos/Healthcare_Analytics_Architecture',
+                                className='repo-btn'
+                            )
                         ]
                     )
                 ]
-            ),
+            )
+        ]
+    ),
 
     #------------- Kafka ----------- # 
-    
     html.Div(
         className="kafka-row",
         children=[
-            html.H1(
-                "Dashboard Live-Stream",
-                className="kafka-title"
+            html.Div(
+                className='stream-border',
+                children=[
+                    html.H1("🖥️ Live-Stream Dashboard", className="kafka-title"),
+                ]
             ),
             html.Div(
                 className='stream-buttons',
@@ -383,133 +379,84 @@ app.layout = html.Div(
                     html.Button("🔄", id="reset-button", n_clicks=0, title="Reset Stream"),
                     dcc.Store(id="pause-store", data={"paused": False}),
                     dcc.Store(id="page-load-reset", data={"reset": True}),  
-                    dcc.Store(id="tab-closed-trigger", data=False, storage_type="session")
+                    dcc.Store(id="tab-closed-trigger", data=False, storage_type="session"),
                 ]
+            ),
+            dcc.RadioItems(
+                id='view-mode-toggle',
+                options=[
+                    {'label': 'Full History', 'value': 'full'},
+                    {'label': 'Latest 30', 'value': 'latest'},
+                ],
+                value='full',
+                labelStyle={'display': 'inline-block', 'margin-right': '10px'}
             ),
         ]
     ),
-    
+
     # ----------- Live Stream Graph ------------- #
-    
     html.Div(
         className="stream-row",
         children=[
-            html.Div(
-                className='',
-                children=[
-                    html.Div(
-                        id="stream-status", 
-                        className="stream-status-text"
-                    ), 
-                ]
-            ),
-
+            html.Div(id="stream-status", className="stream-status-text"), 
             html.Div(
                 className="interval",
                 children=[
-                    dcc.RadioItems(
-                        id='view-mode-toggle',
-                        options=[
-                            {'label': 'Full History', 'value': 'full'},
-                            {'label': 'Latest 30', 'value': 'latest'},
-                        ],
-                        value='full',
-                        labelStyle={
-                            'display': 'inline-block',
-                            'margin-right': '10px',
-                            }
-                    ),
                     dcc.Store(id="department-store", data=DEPARTMENTS),
                     dcc.Store(id="consumer-trigger"),  
-                    dcc.Graph(
-                        className="line-graph",
-                        id='live-line-chart',
-                        style={"marginTop": "0px"}
-                    ),
-                    html.Div(
-                        className="interval",
-                        children=[
-                            dcc.Interval(
-                                id='interval-component',
-                                interval=2 * 1000,  # every 3 seconds
-                                n_intervals=0
-                            )
-                        ]
+                    dcc.Graph(className="line-graph", id='live-line-chart',  
+                            #   config={'responsive': True}
+                            ),
+                    dcc.Interval(
+                        id='interval-component',
+                        interval=2 * 1000,
+                        n_intervals=0
                     )
                 ]
             )
         ]
     ),
-    
+
     # ----------- Bottom Row ------------- #
-    
     html.Div(
         className="data-row",
         children=[
-            
+
             # ---- AI Section ---- #
-            
             html.Div(
                 className="ai-box",
                 children=[
-                    html.H1(
-                        "Quick Synopsis:",
-                        className="ai-title"
-                    ),
-                    html.Div(
-                        className='gpt-response', 
-                        id='checkin-summary', 
-                        # style={'whiteSpace': 'pre-line', 'marginTop': '20px'}
-                    ),
+                    html.H1("Quick Synopsis:", className="ai-title"),
+                    html.Div(id='checkin-summary', className='gpt-response'),
                     dcc.Interval(
                         id='chatgpt-interval',
-                        interval=20 * 1000,  # every 30 seconds
+                        interval=20 * 1000,
                         n_intervals=0
                     )
                 ]
             ),
-            
+
             # ---- Data Section ---- #
             html.Div(
                 className="data-box",
                 children=[
-                    html.H1(
-                        "Patient Check-in Table",
-                        className="data-title"
-                    ),
+                    html.H1("Patient Check-in Table", className="data-title"),
                     dcc.Store(id="department-store", data=DEPARTMENTS),
                     dcc.Store(id="consumer-trigger"), 
-                    dcc.Graph(
-                        className="check-in-table",
-                        id='check-in-table',
-                    ),
-                    
-                    html.Div(
-                        className="interval",
-                        children=[
-                            dcc.Interval(
-                                id='table-interval-component',
-                                interval=2 * 1000, 
-                                n_intervals=0
-                            )
-                        ]
+                    dcc.Graph(className="check-in-table", id='check-in-table'),
+                    dcc.Interval(
+                        id='table-interval-component',
+                        interval=2 * 1000,
+                        n_intervals=0
                     )
                 ]
             ),
         ]
     ),
-]),
 
-#------------- README ----------- # 
+    #------------- README ----------- # 
 
-    html.Div(
-        className='bottom-page',
-        children=[
-                 
-        ]
-    ),
-
-    html.Div(
+        html.Div(
         className='readme-section', 
         children=[
             html.H2("📘 README"),
@@ -647,11 +594,14 @@ def update_graph_live(n, view_mode, departments, pause_data):
 
     fig = go.Figure(data=data)
     fig.update_layout(
-        height=700,
+        # height=700,
         title=dict(text="Patient Check-ins by Department", y=0.94, x=0.5),
         xaxis_title="Time Interval",
         yaxis_title="Number of Check-ins",
-        yaxis=dict(range=[0, 50]),
+        xaxis=dict(gridcolor="#b0b0b0"),  # Set x-axis gridline color
+        yaxis=dict(range=[0, 50], gridcolor="#b0b0b0"),  # Set y-axis gridline color
+        paper_bgcolor="#E2E2E2",  # Sets the outer background of the chart
+        plot_bgcolor="#FFFFFF",   # Sets the inner plot area background
     )
     fig.update_yaxes(autorange=True)
 
@@ -714,9 +664,17 @@ def get_live_table_figure(n, trigger_data, departments, pause_data):
 
     fig.update_layout(
         margin=dict(l=50, r=50, t=30, b=40),
-        height=500,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        # height=500,
+        paper_bgcolor="rgb(193, 193, 193)",  # Sets the outer background of the chart
+            shapes=[
+        dict(
+            type="rect",
+            xref="paper", yref="paper",
+            x0=0, y0=0, x1=1, y1=1,
+            line=dict(color="black", width=2),
+            fillcolor="rgba(0,0,0,0)"
+        )
+    ],
     )
 
     return fig
@@ -812,11 +770,11 @@ def update_stream_status(pause_data):
         "color": "white",
         "margin": "0px 0px 0px 0px",
         "padding-top": "1px",
-        "padding-bottom": "1px",
+        "padding-bottom": "0px",
         "border-right": "2px solid black",
         "border-left": "2px solid black",
-        "border-bottom": "2px solid black",
-        "border-color": "rgb(186, 186, 186)",
+        "border-top": "2px solid black",
+        "border-color": "black",
         "border-radius": "0px",
         "text-align": "center",
         "font-family": 'Calibri',

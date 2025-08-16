@@ -134,6 +134,7 @@ data_lock = threading.Lock()
 consumed_data = []
 consumer_started = False
 consumer_running = False 
+producer_started = False
 paused = False 
 last_pause_state = None 
 # Keep track of historical counts per department
@@ -452,7 +453,7 @@ app.layout = html.Div(
                 className="ai-box",
                 children=[
                     html.H1(
-                        "Quick Synopsis",
+                        "Quick Synopsis:",
                         className="ai-title"
                     ),
                     html.Div(
@@ -831,15 +832,38 @@ def update_stream_status(pause_data):
 
 # ================= Initiate Kafka Threads ================== #
 
-def start_threads():
-    producer_thread = threading.Thread(target=kafka_producer, daemon=True)
-    producer_thread.start()
+# def start_threads():
+#     producer_thread = threading.Thread(target=kafka_producer, daemon=True)
+#     producer_thread.start()
 
-    consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
-    consumer_thread.start()
+#     consumer_thread = threading.Thread(target=kafka_consumer, daemon=True)
+#     consumer_thread.start()
 
-if os.environ.get("DYNO"):  # Running on Heroku
-    start_threads()
+# if os.environ.get("DYNO"):  # Running on Heroku
+#     start_threads()
+
+def start_threads_once():
+    global producer_started, consumer_started
+
+    if not producer_started:
+        threading.Thread(target=kafka_producer, daemon=True).start()
+        producer_started = True
+        print("🟢 Kafka producer thread launched")
+
+    if not consumer_started:
+        threading.Thread(target=kafka_consumer, daemon=True).start()
+        consumer_started = True
+        print("🟢 Kafka consumer thread launched")
+        
+@app.callback(
+    Output("consumer-trigger", "data", allow_duplicate=True),
+    Input("interval-component", "n_intervals"),
+    prevent_initial_call=True
+)
+def trigger_consumer(n):
+    start_threads_once()  # lazy-start producer + consumer
+    return {"status": "started"}
+
     
 # =========================== RUN APP & THREADS ======================= #
 
@@ -848,7 +872,7 @@ if os.environ.get("DYNO"):  # Running on Heroku
 if __name__ == "__main__":
     
     print(f"Serving Flask app '{current_file}'! 🚀")
-    start_threads() 
+    # start_threads() 
     port = int(os.environ.get('PORT', 8050))
     app.run_server(host='0.0.0.0', port=port, debug=True)
     # app.run_server(host='0.0.0.0', port=port, debug=False)
