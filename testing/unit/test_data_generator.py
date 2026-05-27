@@ -62,3 +62,47 @@ def test_generated_record_department_is_valid():
         record = cfg.consumed_data[0] if cfg.consumed_data else {}
 
     assert record.get("department") in DEPARTMENTS
+
+
+def test_data_generator_pauses_when_flagged():
+    """While paused, generator should not append records."""
+    with cfg.data_lock:
+        cfg.consumed_data.clear()
+    cfg.paused = True
+
+    t = threading.Thread(target=data_generator, daemon=True)
+    t.start()
+    time.sleep(0.7)  # enough for at least one 0.5s sleep cycle
+
+    with cfg.data_lock:
+        count = len(cfg.consumed_data)
+
+    cfg.paused = False  # restore
+    assert count == 0
+
+
+def test_start_threads_once_launches_thread():
+    """start_threads_once should spawn a thread when producer_started is False."""
+    from app.data.generator import start_threads_once
+    from unittest.mock import patch, MagicMock
+
+    cfg.producer_started = False
+    mock_thread = MagicMock()
+    with patch("app.data.generator.threading.Thread", return_value=mock_thread) as mock_cls:
+        start_threads_once()
+
+    assert cfg.producer_started is True
+    mock_thread.start.assert_called_once()
+    cfg.producer_started = False  # restore
+
+
+def test_start_threads_once_idempotent():
+    """start_threads_once should not start a second thread when already started."""
+    from app.data.generator import start_threads_once
+    from unittest.mock import patch
+
+    cfg.producer_started = True
+    with patch("app.data.generator.threading.Thread") as mock_cls:
+        start_threads_once()
+        mock_cls.assert_not_called()
+    cfg.producer_started = False  # restore

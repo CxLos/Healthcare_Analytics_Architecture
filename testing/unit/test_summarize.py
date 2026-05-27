@@ -70,3 +70,17 @@ def test_summarize_checkins_uses_recent_100_rows():
     user_msg = captured["messages"][-1]["content"]
     # The prompt contains at most 100 serialized records
     assert user_msg.count("patient_id") <= 100
+
+
+def test_get_client_initializes_when_none():
+    """_get_client should create an OpenAI instance on first call."""
+    import app.data.ai as ai_module
+    original = ai_module._client
+    ai_module._client = None
+
+    mock_instance = MagicMock()
+    with patch("app.data.ai.OpenAI", return_value=mock_instance):
+        client = ai_module._get_client()
+
+    assert client is mock_instance
+    ai_module._client = original  # restore

@@ -26,7 +26,7 @@ register_callbacks(app)
 
 # =========================== RUN APP ========================== #
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     current_file = os.path.basename(__file__)
     print(f"Serving Flask app '{current_file}'! 🚀")
     port = int(os.environ.get('PORT', 8050))

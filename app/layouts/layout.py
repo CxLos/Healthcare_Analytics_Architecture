@@ -108,8 +108,6 @@ def create_layout():
                     className="data-box",
                     children=[
                         html.H1("Patient Check-in Table", className="data-title"),
-                        dcc.Store(id="department-store", data=DEPARTMENTS),
-                        dcc.Store(id="consumer-trigger"),
                         dcc.Graph(className="check-in-table", id='check-in-table'),
                         dcc.Interval(
                             id='table-interval-component',
