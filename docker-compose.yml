@@ -1,0 +1,70 @@
+# ===========================================
+# Docker Compose Configuration File
+# ===========================================
+
+services:
+  web:
+    build: .
+    container_name: healthcare_analytics
+    ports:
+      - "8050:8050"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: gunicorn app.healthcare_analytics:server --workers=1 --bind=0.0.0.0:8050
+
+
+# =========================================
+# Database Service Configuration
+# =========================================
+  db:
+    image: postgres:17  
+    container_name: healthcare_analytics_postgres_db
+    environment:
+      POSTGRES_USER: postgres       
+      POSTGRES_PASSWORD: postgres   
+      POSTGRES_DB: fastapi_db       
+    ports:
+      - "5432:5432" 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi_db"] 
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+# =========================================
+# Admin Interface for Database Management
+# =========================================
+  pgadmin:
+    image: dpage/pgadmin4  
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com   
+      PGADMIN_DEFAULT_PASSWORD: admin             
+    ports:
+      - "5050:80" 
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin 
+    depends_on:
+      db:
+        condition: service_healthy  
+    networks:
+      - app-network
+
+# Volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# Custom network for inter-service communication
+networks:
+  app-network:
+    driver: bridge

@@ -52,8 +52,7 @@ jobs:
          exit-code: '1'
          ignore-unfixed: true
          severity: 'CRITICAL,HIGH'
-         trivyignores: .trivyignore
-         skip-files: 'usr/local/lib/python3.12/site-packages'
+         skip-files: 'usr/local/lib/python3.11/site-packages'
 
  deploy:
    needs: security
@@ -71,8 +70,8 @@ jobs:
        with:
          push: true
          tags: |
-           cxlos/cxlos_advanced_calculator:latest
-           cxlos/cxlos_advanced_calculator:${{ github.sha }}
+           cxlos/healthcare_analytics:latest
+           cxlos/healthcare_analytics:${{ github.sha }}
          platforms: linux/amd64,linux/arm64
-         cache-from: type=registry,ref=cxlos/cxlos_advanced_calculator:cache
+         cache-from: type=registry,ref=cxlos/healthcare_analytics:cache
          cache-to: type=inline
