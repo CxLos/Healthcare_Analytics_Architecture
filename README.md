@@ -1,10 +1,14 @@
 # 📚 Patient Check-In Data Pipeline
 
+![CI](https://github.com/CxLos/Healthcare_Analytics_Architecture/actions/workflows/tests.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
+![Docker](https://img.shields.io/badge/docker-cxlos%2Fhealthcare__analytics-blue)
+
 ## 📝 Description
 
-This project demonstrates a **real-time healthcare data pipeline** using **Apache Kafka** for event streaming, **Python** for data generation and consumption, and **Plotly Dash** for interactive visualization. The simulation generates live patient check-in events from multiple hospital departments (Cardiology, Oncology, Pediatrics), streams them into a Kafka topic, and consumes them to update a live dashboard in real time.  
+This project demonstrates a **real-time healthcare data pipeline** using a **background threading architecture**, **Python** for data generation, **OpenAI GPT** for AI-powered summarization, and **Plotly Dash** for interactive visualization. The simulation generates live patient check-in events from multiple hospital departments (Cardiology, Oncology, Pediatrics) via a daemon thread, and updates a live dashboard every 2 seconds.
 
-It showcases how healthcare organizations could use a streaming architecture to monitor operational metrics, detect patterns, and improve decision-making without relying on static batch reports. While this is a simulated dataset, the architecture reflects real-world use cases in **healthcare analytics, streaming data pipelines, and real-time dashboards**.
+It showcases how healthcare organizations could use a streaming architecture to monitor operational metrics, detect patterns, and improve decision-making without relying on static batch reports. While this is a simulated dataset, the architecture reflects real-world use cases in **healthcare analytics, real-time dashboards, and AI-assisted reporting**.
 
 ## 📂 Table of Contents
 
@@ -27,24 +31,31 @@ To run this project locally, follow these steps:
     ```bash
     cd Healthcare_Analytics_Architecture
     ```
-3. Install the required dependencies:
+3. Create a `.env` file with your OpenAI API key:
+    ```bash
+    cp .env.example .env
+    # then edit .env and set OPENAI_API_KEY
+    ```
+4. Install the required dependencies:
     ```bash
     pip install -r requirements.txt
     ```
 
 ## ▶️ Usage
 
-- This is an interactive Plotly/Dash dashboard that updates in real time.  
-- The Kafka **producer** generates synthetic patient check-in events every 2 seconds.  
-- The Kafka **consumer** listens to the same topic and pushes updates to the dashboard. 
+- This is an interactive Plotly/Dash dashboard that updates in real time.
+- A background daemon thread generates synthetic patient check-in events every 2 seconds.
+- The dashboard polls the in-memory data store and re-renders charts automatically.
 
 - To launch the dashboard locally:
     ```bash
     python app/healthcare_analytics.py
     ```
 
-- Or access the live version here:  
-  🌐 [Streaming Patient Check-In Dashboard](https://patient-check-in-stream-c57db50559ba.herokuapp.com/)
+- To run the full test suite with coverage:
+    ```bash
+    pytest
+    ```
 
 ![Preview](./screenshots/225424.png)
 
@@ -52,33 +63,48 @@ To run this project locally, follow these steps:
 
 ### Data Generation
 
-- Synthetic patient check-ins are created with:
+Synthetic patient check-ins are created with:
 
-    - `patient_id`: random 4-digit number.
-    - `check_in_time`: current timestamp.
-    - `department`: randomly selected from `["Cardiology", "Oncology", "Pediatrics"]`.
+- `patient_id`: random 4-digit number
+- `check_in_time`: current timestamp
+- `department`: randomly selected from `["Cardiology", "Oncology", "Pediatrics"]`
+- `complaint`: randomly selected complaint mapped to the chosen department
 
 ### Streaming Layer
 
-- **Producer**: Sends JSON-encoded events to Kafka topic `patient_checkins`.
-- **Consumer**: Reads events in real time and stores them in a thread-safe queue for visualization.
+- A **daemon thread** (`data_generator`) produces one event every 2 seconds into a thread-safe in-memory list (`consumed_data`), guarded by a `threading.Lock`.
+- The thread respects a **pause/resume** toggle exposed via the dashboard UI.
+- `start_threads_once()` ensures the thread is only started once per process lifetime.
+
+### AI Summarization
+
+- On demand, the dashboard calls **OpenAI GPT-3.5-turbo** via a lazy-initialized client (`_get_client()`) to generate a natural-language summary of current check-in trends.
+- Capped at the 100 most recent rows to stay within token limits.
 
 ### Visualization Layer
 
-- **Plotly Dash** app updates every 3 seconds.
+- **Plotly Dash** app updates every 3 seconds via `dcc.Interval`.
 - Displays a time-series line chart showing the count of check-ins per department over time.
+- Live table shows the most recent 10 check-ins.
+
+### Testing & CI/CD
+
+- **33 tests** across unit, integration, and e2e layers with **100% code coverage**.
+- GitHub Actions pipeline: `test → security (Trivy) → deploy (Docker Hub)`.
+- Docker image published to `cxlos/healthcare_analytics` on every merge to `main`.
 
 ## Results
 
 ### 🔍 Insights
 
-- Demonstrates the low-latency capabilities of Kafka for healthcare operations.
+- Demonstrates low-latency, thread-safe data ingestion for healthcare operations.
 - Simulates departmental workload trends in real time.
+- AI summarization layer provides instant narrative insights from live data.
 - Provides a blueprint for scaling into more complex event-driven healthcare analytics.
 
 ## ✅ Conclusion
 
-This project illustrates how Apache Kafka can serve as the backbone for real-time healthcare analytics pipelines. By integrating streaming data with an interactive dashboard, hospitals and clinics can gain instant visibility into patient flow and department activity. The same architecture could be extended to integrate with machine learning models for predictive patient flow management, anomaly detection, or automated alerts.
+This project illustrates how a lightweight threading architecture can serve as the backbone for real-time healthcare analytics pipelines without the operational overhead of a full message broker. By integrating live data generation with an interactive dashboard and AI-powered summarization, hospitals and clinics can gain instant visibility into patient flow and department activity. The same architecture could be extended to integrate with machine learning models for predictive patient flow management, anomaly detection, or automated alerts.
 
 ## 📄 License
 
