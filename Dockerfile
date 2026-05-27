@@ -6,9 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install dependencies first (layer-cached)
+# Install dependencies first (layer-cached), then upgrade vulnerable build tools
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --upgrade "wheel>=0.46.2" setuptools
 
 # Copy application code
 COPY . .
