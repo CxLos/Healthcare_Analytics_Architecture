@@ -40,7 +40,7 @@ To run this project locally, follow these steps:
 
 - To launch the dashboard locally:
     ```bash
-    python healthcare_analytics.py
+    python app/healthcare_analytics.py
     ```
 
 - Or access the live version here:  

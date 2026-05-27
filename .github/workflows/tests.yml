@@ -1,0 +1,78 @@
+
+name: CI/CD
+
+on:
+ push:
+   branches: [ main ]
+ pull_request:
+   branches: [ main ]
+
+jobs:
+ test:
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v4
+     - uses: actions/setup-python@v5
+       with:
+         python-version: '3.11'
+     - uses: actions/cache@v4
+       with:
+         path: |
+           venv
+           ~/.cache/pip
+         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+         restore-keys: |
+           ${{ runner.os }}-pip-
+     - name: Install dependencies
+       run: |
+         python -m venv venv
+         source venv/bin/activate
+         pip install -r requirements.txt
+
+     - name: Run tests
+       run: |
+         source venv/bin/activate
+         pytest testing/unit/
+         pytest testing/integration/
+         pytest testing/e2e/ || [ $? -eq 5 ]
+
+
+ security:
+   needs: test
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v4
+     - name: Build image
+       run: docker build --no-cache -t app:test .
+     - name: Run Trivy vulnerability scanner
+       uses: aquasecurity/trivy-action@master
+       with:
+         image-ref: 'app:test'
+         format: 'table'
+         exit-code: '1'
+         ignore-unfixed: true
+         severity: 'CRITICAL,HIGH'
+         trivyignores: .trivyignore
+         skip-files: 'usr/local/lib/python3.12/site-packages'
+
+ deploy:
+   needs: security
+   if: github.ref == 'refs/heads/main'
+   runs-on: ubuntu-latest
+   environment: production 
+   steps:
+     - uses: actions/checkout@v4
+     - uses: docker/setup-buildx-action@v3
+     - uses: docker/login-action@v3
+       with:
+         username: ${{ secrets.DOCKERHUB_USERNAME }}
+         password: ${{ secrets.DOCKERHUB_TOKEN }}
+     - uses: docker/build-push-action@v5
+       with:
+         push: true
+         tags: |
+           cxlos/cxlos_advanced_calculator:latest
+           cxlos/cxlos_advanced_calculator:${{ github.sha }}
+         platforms: linux/amd64,linux/arm64
+         cache-from: type=registry,ref=cxlos/cxlos_advanced_calculator:cache
+         cache-to: type=inline
